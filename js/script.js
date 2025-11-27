@@ -1,40 +1,47 @@
 // =========================================
-// 1. Inicialização do Mapa (Sua Configuração Personalizada)
+// 1. Inicialização do Mapa (Sua Configuração)
 // =========================================
 
-// Defina os bounds iniciais (Limites gerais onde o usuário pode navegar)
 var initialBounds = [[-18, -60], [10, -30]];
 
-// Ajuste para telas pequenas (Mobile)
 if (window.innerWidth <= 600) {
     initialBounds = [[-16, -62], [4, -23]];
 }
 
-// Criação do mapa com as restrições
 const map = L.map('map', {
-    zoomControl: false,         // Remove os botões de + e - (adicione L.control.zoom() se quiser eles de volta)
+    zoomControl: false,
     maxZoom: 28,
-    minZoom: 1,                 // Valor temporário, será ajustado abaixo
-    maxBounds: initialBounds,   // Impede sair dessa área
-    maxBoundsViscosity: 1.0     // "Parede sólida": não deixa arrastar nada para fora
-}).fitBounds([[-12.5, -45.5], [-2.5, -40.5]]); // Enquadra o Piauí inicialmente
+    minZoom: 1,
+    maxBounds: initialBounds,
+    maxBoundsViscosity: 1.0
+}).fitBounds([[-12.5, -45.5], [-2.5, -40.5]]);
 
-// Trava o zoom mínimo para o usuário não afastar muito a câmera
 map.options.minZoom = map.getZoom();
 
-// Ativa o plugin de Hash (atualiza a URL com a posição)
-// Requer o script leaflet-hash no HTML
 var hash = new L.Hash(map);
-
-// Adicionando a camada base (OpenStreetMap)
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-}).addTo(map);
 
 
 // =========================================
-// 2. Lógica dos Ícones Dinâmicos
+// 2. Definição das Camadas Base (Mapa e Satélite)
+// =========================================
+
+// Camada 1: OpenStreetMap (Padrão)
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+});
+
+// Camada 2: Satélite (Esri World Imagery)
+const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Tiles © Esri — Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+});
+
+// Adiciona o OSM como padrão ao iniciar
+osmLayer.addTo(map);
+
+
+// =========================================
+// 3. Lógica dos Ícones Dinâmicos
 // =========================================
 
 function limparTexto(texto) {
@@ -68,7 +75,7 @@ function obterIcone(feature) {
 
 
 // =========================================
-// 3. Configuração dos Popups
+// 4. Configuração dos Popups
 // =========================================
 
 function onEachFeatureGeral(feature, layer) {
@@ -93,7 +100,7 @@ function onEachFeatureGeral(feature, layer) {
 
 
 // =========================================
-// 4. Carregamento dos Dados
+// 5. Carregamento dos Dados
 // =========================================
 
 Promise.all([
@@ -123,15 +130,23 @@ Promise.all([
         onEachFeature: onEachFeatureGeral
     }).addTo(map);
 
-// --- Camada de Pontos (COM CLUSTER/AGRUPAMENTO) ---
-    
-    // 1. Criamos o grupo de cluster
+// --- Camada de Pontos (COM CLUSTER AGRESSIVO) ---
     const clusterPontos = L.markerClusterGroup({
-        showCoverageOnHover: false, // Opcional: não mostra o polígono da área ao passar o mouse
-        maxClusterRadius: 50        // Opcional: define o raio de agrupamento (padrão é 80)
+        showCoverageOnHover: false,
+        
+        // Raio bem pequeno: só agrupa se os pontos estiverem "colados"
+        maxClusterRadius: 30, 
+
+        // Assim que chegar no nível de Zoom 13 (visão geral da cidade), 
+        // ele DESATIVA o agrupamento e mostra todos os ícones soltos.
+        disableClusteringAtZoom: 13,
+        
+        // Se houver pontos EXATAMENTE na mesma coordenada geográfica,
+        // ele ainda vai agrupar (pois é impossível mostrar um em cima do outro).
+        // Ao clicar, ele espalha (efeito aranha).
+        spiderfyOnMaxZoom: true 
     });
 
-    // 2. Criamos a camada GeoJSON (igual antes, mas SEM .addTo(map) no final)
     const pontosGeoJSON = L.geoJSON(pontosData, {
         pointToLayer: function (feature, latlng) {
             return L.marker(latlng, { icon: obterIcone(feature) });
@@ -139,24 +154,30 @@ Promise.all([
         onEachFeature: onEachFeatureGeral
     });
 
-    // 3. Adicionamos os pontos ao cluster
     clusterPontos.addLayer(pontosGeoJSON);
-
-    // 4. Adicionamos o cluster ao mapa
     map.addLayer(clusterPontos);
 
 
-    // --- Controle de Camadas ---
+    // =========================================
+    // 6. Controle de Camadas (Base + Overlays)
+    // =========================================
+    
+    // Define as opções de fundo (radio buttons)
+    const baseMaps = {
+        "Mapa Padrão": osmLayer,
+        "Satélite": satelliteLayer
+    };
+
+    // Define as opções de sobreposição (checkboxes)
     const overlayMaps = {
-        "Obras (Pontos)": clusterPontos, // <--- Aqui usamos a variável do CLUSTER, não do GeoJSON
+        "Obras (Pontos)": clusterPontos,
         "Trechos (Linhas)": linhasLayer,
         "Municípios": municipiosLayer
     };
 
-    L.control.layers(null, overlayMaps, { collapsed: false }).addTo(map);
-
-    // REMOVIDO: map.fitBounds(...) 
-    // Motivo: Você já definiu o fitBounds fixo no Piauí na inicialização (linha 19).
+    // Adiciona o controle atualizado
+    // O primeiro parâmetro agora é 'baseMaps' (não mais null)
+    L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
 
 }).catch(error => {
     console.error("Erro ao carregar os dados:", error);
