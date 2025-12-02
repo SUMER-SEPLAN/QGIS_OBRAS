@@ -9,8 +9,8 @@ if (window.innerWidth <= 600) {
 
 const map = L.map('map', {
     zoomControl: false,
-    maxZoom: 20,
-    minZoom: 6,         
+    maxZoom: 21,        // Permite zoom profundo (para o satélite)
+    minZoom: 6,         // Impede afastar demais
     maxBounds: initialBounds,
     maxBoundsViscosity: 1.0 
 }).fitBounds([[-12.5, -45.5], [-2.5, -40.5]]);
@@ -18,22 +18,24 @@ const map = L.map('map', {
 var hash = new L.Hash(map);
 
 // =========================================
-// 2. CAMADAS BASE (MAPA PADRÃO E GOOGLE SATÉLITE)
+// 2. CAMADAS BASE (OSM + GOOGLE SATÉLITE)
 // =========================================
 
+// MAPA PADRÃO: OpenStreetMap (Limpo)
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
+    maxZoom: 21,       // Permite o mapa ir até o 21
+    maxNativeZoom: 19, // TRUQUE: Só baixa até o 19, depois estica a imagem (Zoom Digital)
     attribution: '© OpenStreetMap'
 });
 
-// USANDO GOOGLE HYBRID (Melhor resolução e permite zoom maior)
+// MAPA SATÉLITE: Google Híbrido (Alta Resolução)
 const satelliteLayer = L.tileLayer('http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
-    maxZoom: 20, // O Google permite ir muito mais perto
+    maxZoom: 21, 
     subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
     attribution: '© Google Maps'
 });
 
-// Inicia com o mapa padrão
+// Inicia com o mapa padrão (OSM)
 osmLayer.addTo(map);
 
 // =========================================
@@ -74,13 +76,11 @@ function obterIcone(feature) {
     const eixoLimpo = limparTexto(eixoRaw);
     const statusLimpo = limparTexto(statusRaw);
     
-    // Tenta montar o nome do arquivo dinamicamente
     const nomeArquivo = `${eixoLimpo}_${statusLimpo}`;
 
     return L.icon({
         iconUrl: `icones/icones_camadas/${nomeArquivo}.svg`,
-        // Fallback genérico para garantir que algo apareça se a imagem específica falhar
-        // iconUrl: 'icones/icones_menu/obras.png', 
+        // iconUrl: 'icones/icones_menu/obras.png', // Fallback se precisar
         iconSize: [32, 32],
         iconAnchor: [16, 32],
         popupAnchor: [0, -32]
@@ -106,7 +106,8 @@ function onEachFeatureGeral(feature, layer) {
             html += `<h3>Detalhes</h3>`;
         }
         
-        const ignorar = ['id', 'fid', 'geometry', 'project_id', 'element_name', 'origem', 'tipo_geo'];
+        // Campos técnicos para esconder
+        const ignorar = ['id', 'fid', 'geometry', 'project_id', 'element_name', 'origem', 'tipo_geo', 'COD_IBGE_COMPOSTO', 'tags', 'provisory', 'definitive'];
         
         for (const key in p) {
             if (!ignorar.includes(key) && p[key] && key !== 'Eixo') {
@@ -122,7 +123,6 @@ function onEachFeatureGeral(feature, layer) {
 // 5. CARREGAMENTO DOS DADOS
 // =========================================
 
-// Configuração do Cluster
 window.clusterPontos = L.markerClusterGroup({
     showCoverageOnHover: false,
     maxClusterRadius: 30,
@@ -131,14 +131,12 @@ window.clusterPontos = L.markerClusterGroup({
 });
 map.addLayer(window.clusterPontos);
 
-// Camada de Linhas Vazia (será preenchida no fetch)
 window.linhasLayer = L.geoJSON(null, {
     style: styleLinhas,
     onEachFeature: onEachFeatureGeral
 });
 map.addLayer(window.linhasLayer);
 
-// Fetch dos Dados
 Promise.all([
     fetch('data/municipios.geojson').then(res => res.json()),
     fetch('data/linhas.geojson').then(res => res.json()),
@@ -166,7 +164,7 @@ Promise.all([
         linhas: linhasDataLocal
     };
 
-    // C. POVOAR O MAPA INICIALMENTE
+    // C. POVOAR O MAPA
     window.linhasLayer.addData(linhasDataLocal);
 
     const pontosGeoJSON = L.geoJSON(pontosDataLocal, {
@@ -177,7 +175,7 @@ Promise.all([
     });
     window.clusterPontos.addLayer(pontosGeoJSON);
 
-    // D. INICIALIZAR OS FILTROS
+    // D. INICIALIZAR FILTROS
     inicializarFiltros();
 
 }).catch(error => {
@@ -186,25 +184,16 @@ Promise.all([
 
 
 // =========================================
-// 6. LÓGICA DE FILTROS (LISTA DE MUNICÍPIOS CORRIGIDA)
+// 6. LÓGICA DE FILTROS
 // =========================================
 
 const listaTerritorios = [
-    "CARNAUBAIS",
-    "CHAPADA DAS MANGABEIRAS",
-    "CHAPADA VALE DO ITAIM",
-    "COCAIS",
-    "ENTRE-RIOS",
-    "PLANÍCIE LITORÂNEA",
-    "SERRA DA CAPIVARA",
-    "TABULEIRO DO ALTO PARNAÍBA",
-    "VALE DO RIO CANINDÉ",
-    "VALE DO RIO GUARIBAS",
-    "VALE DO RIO SAMBITO",
+    "CARNAUBAIS", "CHAPADA DAS MANGABEIRAS", "CHAPADA VALE DO ITAIM", "COCAIS",
+    "ENTRE-RIOS", "PLANÍCIE LITORÂNEA", "SERRA DA CAPIVARA", "TABULEIRO DO ALTO PARNAÍBA",
+    "VALE DO RIO CANINDÉ", "VALE DO RIO GUARIBAS", "VALE DO RIO SAMBITO",
     "VALE DOS RIOS PIAUÍ E ITAUEIRAS"
 ];
 
-// LISTA DE MUNICÍPIOS CORRIGIDA (224 ITENS)
 const listaMunicipios = [
     "ACAUÃ", "AGRICOLÂNDIA", "ALAGOINHA DO PIAUÍ", "ALEGRETE DO PIAUÍ", "ALTO LONGÁ", "ALTOS", "ALVORADA DO GURGUÉIA", "AMARANTE", "ANGICAL DO PIAUÍ", "ANTÔNIO ALMEIDA", "ANÍSIO DE ABREU", "AROAZES", "AROEIRAS DO ITAIM", "ARRAIAL", "ASSUNÇÃO DO PIAUÍ", "AVELINO LOPES", "BAIXA GRANDE DO RIBEIRO", "BARRA D'ALCÂNTARA", "BARRAS", "BARREIRAS DO PIAUÍ", "BARRO DURO", "BATALHA", "BELA VISTA DO PIAUÍ", "BELÉM DO PIAUÍ", "BENEDITINOS", "BERTOLÍNIA", "BETÂNIA DO PIAUÍ", "BOA HORA", "BOCAINA", "BOM JESUS", "BOM PRINCÍPIO DO PIAUÍ", "BONFIM DO PIAUÍ", "BOQUEIRÃO DO PIAUÍ", "BRASILEIRA", "BREJO DO PIAUÍ", "BURITI DOS LOPES", "BURITI DOS MONTES", "CABECEIRAS DO PIAUÍ", "CAJAZEIRAS DO PIAUÍ", "CAJUEIRO DA PRAIA", "CALDEIRÃO GRANDE DO PIAUÍ", "CAMPINAS DO PIAUÍ", "CAMPO ALEGRE DO FIDALGO", "CAMPO GRANDE DO PIAUÍ", "CAMPO LARGO DO PIAUÍ", "CAMPO MAIOR", "CANAVIEIRA", "CANTO DO BURITI", "CAPITÃO DE CAMPOS", "CAPITÃO GERVÁSIO OLIVEIRA", "CARACOL", "CARAÚBAS DO PIAUÍ", "CARIDADE DO PIAUÍ", "CASTELO DO PIAUÍ", "CAXINGÓ", "COCAL", "COCAL DE TELHA", "COCAL DOS ALVES", "COIVARAS", "COLÔNIA DO GURGUÉIA", "COLÔNIA DO PIAUÍ", "CONCEIÇÃO DO CANINDÉ", "CORONEL JOSÉ DIAS", "CORRENTE", "CRISTALÂNDIA DO PIAUÍ", "CRISTINO CASTRO", "CURIMATÁ", "CURRAIS", "CURRAL NOVO DO PIAUÍ", "CURRALINHOS", "DEMERVAL LOBÃO", "DIRCEU ARCOVERDE", "DOM EXPEDITO LOPES", "DOM INOCÊNCIO", "DOMINGOS MOURÃO", "ELESBÃO VELOSO", "ELISEU MARTINS", "ESPERANTINA", "FARTURA DO PIAUÍ", "FLORES DO PIAUÍ", "FLORESTA DO PIAUÍ", "FLORIANO", "FRANCINÓPOLIS", "FRANCISCO AYRES", "FRANCISCO MACEDO", "FRANCISCO SANTOS", "FRONTEIRAS", "GEMINIANO", "GILBUÉS", "GUADALUPE", "GUARIBAS", "HUGO NAPOLEÃO", "ILHA GRANDE", "INHUMA", "IPIRANGA DO PIAUÍ", "ISAÍAS COELHO", "ITAINÓPOLIS", "ITAUEIRA", "JACOBINA DO PIAUÍ", "JAICÓS", "JARDIM DO MULATO", "JATOBÁ DO PIAUÍ", "JERUMENHA", "JOAQUIM PIRES", "JOCA MARQUES", "JOSÉ DE FREITAS", "JOÃO COSTA", "JUAZEIRO DO PIAUÍ", "JUREMA", "JÚLIO BORGES", "LAGOA ALEGRE", "LAGOA DE SÃO FRANCISCO", "LAGOA DO BARRO DO PIAUÍ", "LAGOA DO PIAUÍ", "LAGOA DO SÍTIO", "LAGOINHA DO PIAUÍ", "LANDRI SALES", "LUZILÂNDIA", "LUÍS CORREIA", "MADEIRO", "MANOEL EMÍDIO", "MARCOLÂNDIA", "MARCOS PARENTE", "MASSAPÊ DO PIAUÍ", "MATIAS OLÍMPIO", "MIGUEL ALVES", "MIGUEL LEÃO", "MILTON BRANDÃO", "MONSENHOR GIL", "MONSENHOR HIPÓLITO", "MONTE ALEGRE DO PIAUÍ", "MORRO CABEÇA NO TEMPO", "MORRO DO CHAPÉU DO PIAUÍ", "MURICI DOS PORTELAS", "NAZARÉ DO PIAUÍ", "NAZÁRIA", "NOSSA SENHORA DE NAZARÉ", "NOSSA SENHORA DOS REMÉDIOS", "NOVA SANTA RITA", "NOVO ORIENTE DO PIAUÍ", "NOVO SANTO ANTÔNIO", "OEIRAS", "OLHO D'ÁGUA DO PIAUÍ", "PADRE MARCOS", "PAES LANDIM", "PAJEÚ DO PIAUÍ", "PALMEIRA DO PIAUÍ", "PALMEIRAIS", "PAQUETÁ", "PARNAGUÁ", "PARNAÍBA", "PASSAGEM FRANCA DO PIAUÍ", "PATOS DO PIAUÍ", "PAU D'ARCO DO PIAUÍ", "PAULISTANA", "PAVUSSU", "PEDRO II", "PEDRO LAURENTINO", "PICOS", "PIMENTEIRAS", "PIO IX", "PIRACURUCA", "PIRIPIRI", "PORTO", "PORTO ALEGRE DO PIAUÍ", "PRATA DO PIAUÍ", "QUEIMADA NOVA", "REDENÇÃO DO GURGUÉIA", "REGENERAÇÃO", "RIACHO FRIO", "RIBEIRA DO PIAUÍ", "RIBEIRO GONÇALVES", "RIO GRANDE DO PIAUÍ", "SANTA CRUZ DO PIAUÍ", "SANTA CRUZ DOS MILAGRES", "SANTA FILOMENA", "SANTA LUZ", "SANTA ROSA DO PIAUÍ", "SANTANA DO PIAUÍ", "SANTO ANTÔNIO DE LISBOA", "SANTO ANTÔNIO DOS MILAGRES", "SANTO INÁCIO DO PIAUÍ", "SEBASTIÃO BARROS", "SEBASTIÃO LEAL", "SIGEFREDO PACHECO", "SIMPLÍCIO MENDES", "SIMÕES", "SOCORRO DO PIAUÍ", "SUSSUAPARA", "SÃO BRAZ DO PIAUÍ", "SÃO FRANCISCO DE ASSIS DO PIAUÍ", "SÃO FRANCISCO DO PIAUÍ", "SÃO FÉLIX DO PIAUÍ", "SÃO GONÇALO DO GURGUÉIA", "SÃO GONÇALO DO PIAUÍ", "SÃO JOSÉ DO DIVINO", "SÃO JOSÉ DO PEIXE", "SÃO JOSÉ DO PIAUÍ", "SÃO JOÃO DA CANABRAVA", "SÃO JOÃO DA FRONTEIRA", "SÃO JOÃO DA SERRA", "SÃO JOÃO DA VARJOTA", "SÃO JOÃO DO ARRAIAL", "SÃO JOÃO DO PIAUÍ", "SÃO JULIÃO", "SÃO LOURENÇO DO PIAUÍ", "SÃO LUIS DO PIAUÍ", "SÃO MIGUEL DA BAIXA GRANDE", "SÃO MIGUEL DO FIDALGO", "SÃO MIGUEL DO TAPUIO", "SÃO PEDRO DO PIAUÍ", "SÃO RAIMUNDO NONATO", "TAMBORIL DO PIAUÍ", "TANQUE DO PIAUÍ", "TERESINA", "UNIÃO", "URUÇUÍ", "VALENÇA DO PIAUÍ", "VERA MENDES", "VILA NOVA DO PIAUÍ", "VÁRZEA BRANCA", "VÁRZEA GRANDE", "WALL FERRAZ", "ÁGUA BRANCA"
 ];
@@ -215,11 +204,9 @@ function inicializarFiltros() {
         return;
     }
 
-    // 1. Preencher Estáticos (Com a lista corrigida)
     preencherSelect('filtro-municipio', listaMunicipios);
     preencherSelect('filtro-territorio', listaTerritorios);
 
-    // 2. Preencher Dinâmicos (Órgão, Status, etc)
     if (!window.dadosGlobais) return;
     
     const todosDados = [];
@@ -240,7 +227,6 @@ function inicializarFiltros() {
     preencherSelect('filtro-eixo', eixos);
     preencherSelect('filtro-tipologia', tipologias);
 
-    // 3. Ativar o SlimSelect
     if (window.parent.iniciarSlimSelect) {
         window.parent.iniciarSlimSelect();
     }
@@ -321,7 +307,6 @@ function aplicarFiltros() {
     }
 }
 
-// --- LÓGICA DE COMPARAÇÃO CORRIGIDA ---
 function checarFiltro(feature, filtros) {
     const p = feature.properties;
 
@@ -335,7 +320,7 @@ function checarFiltro(feature, filtros) {
     };
 
     const munDados = getVal('Localizacao (municipio)').toUpperCase();
-    const terrDados = getVal('TERRITORIO_COMPOSTO').toUpperCase(); // Agora garantimos Maiúsculo
+    const terrDados = getVal('TERRITORIO_COMPOSTO').toUpperCase(); 
     const orgaoDados = getVal('Orgão da Açao');
     const sitDados = getVal('Status_atual');
     const eixoDados = getVal('Eixo');
@@ -349,7 +334,7 @@ function checarFiltro(feature, filtros) {
         if (!match) return false;
     }
 
-    // 2. Territórios (CORRIGIDO PARA MAIÚSCULO E HIFENS)
+    // 2. Territórios
     if (filtros.territorio.length > 0) {
         const match = filtros.territorio.some(filtro => terrDados.includes(filtro.toUpperCase()));
         if (!match) return false;
