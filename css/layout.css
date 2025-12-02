@@ -1,0 +1,353 @@
+/* RESET */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', sans-serif; }
+body, html { height: 100%; overflow: hidden; }
+
+/* --- TOPBAR --- */
+.topbar {
+    width: 100%;
+    height: 70px; /* Altura exata do padrão Gov.br/Seplan */
+    background-color: #0352AA;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px; /* Mais espaçamento nas laterais */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15); /* Sombra suave */
+    z-index: 2000;
+    position: relative;
+    border-bottom: 1px solid rgba(255,255,255,0.1); /* Detalhe sutil */
+}
+
+/* Botão Hamburguer */
+.btn-menu {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px; /* Área de clique maior */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.btn-menu:hover {
+    background-color: rgba(255, 255, 255, 0.1); /* Efeito hover igual ao site */
+}
+
+.btn-menu img {
+    width: 28px; /* Ícone um pouco maior */
+    height: 28px;
+    filter: brightness(0) invert(1);
+}
+
+/* Logo Direita */
+.logo-estado {
+    height: 42px; /* Altura ajustada proporcionalmente aos 70px da barra */
+    object-fit: contain;
+}
+
+/* Ajuste do container principal para descontar a nova altura */
+.main-container {
+    position: relative;
+    width: 100%;
+    height: calc(100% - 70px); /* Ajustado para bater com a barra */
+}
+
+/* --- SIDEBAR DUPLA (AZUL + BRANCO) --- */
+.sidebar-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    display: flex; /* Coloca a barra azul ao lado da branca */
+    z-index: 1000;
+    transition: transform 0.3s ease-in-out;
+    /* Sombras para dar destaque sobre o mapa */
+    box-shadow: 4px 0 15px rgba(0,0,0,0.15);
+}
+
+/* Estado Fechado: Move tudo para a esquerda para esconder */
+.sidebar-container.closed {
+    transform: translateX(-100%);
+}
+
+/* 1. FAIXA AZUL (ÍCONES) */
+.icon-bar {
+    width: 60px;
+    background-color: #0352AA; /* Azul do menu */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px;
+    border-right: 1px solid rgba(255,255,255,0.1);
+}
+
+.icon-item {
+    width: 100%;
+    padding: 15px 0;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-left: 4px solid transparent;
+}
+
+.icon-item img {
+    width: 24px;
+    height: 24px;
+    /* Ícones brancos por padrão (se forem png preto, use filter invert) */
+    /* filter: brightness(0) invert(1); Descomente se seus ícones forem pretos */
+}
+
+.icon-item:hover {
+    background-color: rgba(255,255,255,0.1);
+}
+
+.icon-item.active {
+    background-color: #024491; /* Azul um pouco mais escuro */
+    border-left: 4px solid #fff; /* Indicador branco ativo */
+}
+
+/* 2. PAINEL BRANCO (CONTEÚDO) */
+.content-panel {
+    width: 300px; /* Largura do painel de informações */
+    background-color: white;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+.panel-section {
+    display: none; /* Esconde todos por padrão */
+}
+.panel-section.active {
+    display: block; /* Mostra só o ativo */
+    animation: fadeIn 0.3s;
+}
+
+.panel-section h3 {
+    color: #0352AA;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #eee;
+    padding-bottom: 10px;
+}
+
+/* Animação suave na troca de abas */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- IFRAME --- */
+.map-wrapper {
+    width: 100%;
+    height: 100%;
+}
+iframe {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border: none;
+}
+
+/* --- ESTILO DA LISTA DO SOBRE --- */
+.lista-sobre {
+    list-style: none; /* Remove as bolinhas padrão */
+    padding: 0;
+    margin-top: 10px;
+}
+
+.lista-sobre li {
+    margin-bottom: 15px;
+    font-size: 14px;
+    line-height: 1.4;
+    color: #555;
+    background-color: #f9f9f9; /* Fundo cinza claro leve */
+    padding: 10px;
+    border-radius: 5px;
+    border-left: 3px solid #0352AA; /* Detalhe azul na esquerda */
+}
+
+.lista-sobre li strong {
+    color: #333;
+    display: block; /* Quebra linha depois do título */
+    margin-bottom: 4px;
+}
+
+/* --- ESTILO DAS LEGENDAS --- */
+
+.legenda-grupo {
+    margin-bottom: 25px; /* Espaço entre os grupos */
+}
+
+.legenda-grupo h4 {
+    color: #999; /* Cor cinza para o subtítulo igual referência */
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+.legenda-item {
+    display: flex;
+    align-items: center; /* Centraliza verticalmente */
+    margin-bottom: 8px;
+    padding: 5px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.legenda-item:hover {
+    background-color: #f5f5f5; /* Efeito suave ao passar o mouse */
+}
+
+.legenda-item img {
+    width: 24px;   /* Tamanho padrão do ícone */
+    height: 24px;
+    object-fit: contain; /* Garante que não distorça */
+    margin-right: 12px; /* Espaço entre ícone e texto */
+}
+
+.legenda-item span {
+    font-size: 14px;
+    color: #333;
+    font-weight: 500;
+}
+
+/* --- ESTILO DOS FILTROS --- */
+
+#panel-filtros {
+    padding-bottom: 80px; /* Espaço extra para rolagem */
+}
+
+.filter-group {
+    margin-bottom: 15px;
+}
+
+.filter-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 5px;
+}
+
+/* Container do Input com Ícone */
+.input-icon {
+    position: relative;
+    width: 100%;
+}
+
+.input-icon img {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    opacity: 0.5;
+    pointer-events: none; /* O clique passa através da imagem */
+}
+
+/* O Select em si */
+.filter-group select {
+    width: 100%;
+    padding: 10px 10px 10px 35px; /* Padding esquerda maior para caber o ícone */
+    border: 1px solid #ddd;
+    background-color: #f2f2f2; /* Cinza claro da imagem */
+    border-radius: 8px; /* Bordas arredondadas */
+    font-size: 14px;
+    color: #555;
+    appearance: none; /* Remove a seta padrão feia do navegador */
+    -webkit-appearance: none;
+    cursor: pointer;
+    
+    /* Adiciona uma setinha customizada na direita */
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23007CB2%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    background-size: 10px;
+}
+
+.filter-group select:focus {
+    outline: none;
+    border-color: #0352AA;
+    background-color: #fff;
+}
+
+/* Botões */
+.filter-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 25px;
+    gap: 10px;
+}
+
+.filter-actions button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 6px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.btn-limpar {
+    background-color: #fff;
+    border: 1px solid #ccc !important;
+    color: #666;
+}
+.btn-limpar:hover {
+    background-color: #f9f9f9;
+}
+
+.btn-aplicar {
+    background-color: #0352AA;
+    color: white;
+}
+.btn-aplicar:hover {
+    background-color: #023e8a;
+}
+
+/* --- SELETOR DE CAMADAS (MAPA VS SATÉLITE) --- */
+.layer-switcher {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1500; /* Garante que fique acima do mapa */
+    background-color: white;
+    padding: 5px;
+    border-radius: 30px; /* Bordas bem arredondadas */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    display: flex;
+    gap: 5px;
+}
+
+.layer-btn {
+    border: none;
+    background: transparent;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    outline: none;
+}
+
+.layer-btn:hover {
+    background-color: #f5f5f5;
+    color: #333;
+}
+
+/* Estado Ativo (O botão selecionado fica azul) */
+.layer-btn.active {
+    background-color: #0352AA;
+    color: white;
+    box-shadow: 0 2px 5px rgba(3, 82, 170, 0.3);
+}

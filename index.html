@@ -1,32 +1,341 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Web de Obras - Piauí</title>
-
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-     crossorigin=""/>
-
-    <link rel="stylesheet" href="css/style.css">
+    <title>Mapa de Obras - PI</title>
+    <link rel="stylesheet" href="css/layout.css">
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.1/slimselect.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.1/slimselect.min.js"></script>
 </head>
 <body>
 
-    <div id="map"></div>
+    <header class="topbar">
+        <div class="topbar-left">
+            <button id="menu-toggle" class="btn-menu">
+                <img src="icones/icones_menu/legenda.svg" alt="Menu">
+            </button>
+        </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-     crossorigin=""></script>
+        <div class="topbar-right">
+            <img src="icones/icones_menu/logo_pi.png" alt="Piauí" class="logo-estado">
+        </div>
+    </header>
+
+    <div class="main-container">
+        
+        <div id="sidebar-container" class="sidebar-container closed">
+            
+            <aside class="icon-bar">
+                <div class="icon-item active" data-target="panel-obras" title="Obras">
+                    <img src="icones/icones_menu/obras.png" alt="Obras">
+                </div>
+                <div class="icon-item" data-target="panel-filtros" title="Filtros">
+                    <img src="icones/icones_menu/filtro.png" alt="Filtros">
+                </div>
+                <div class="icon-item" data-target="panel-legendas" title="Legendas">
+                    <img src="icones/icones_menu/legendas.png" alt="Legendas">
+                </div>
+                <div class="icon-item" data-target="panel-sobre" title="Sobre">
+                    <img src="icones/icones_menu/informacao.png" alt="Sobre">
+                </div>
+            </aside>
+
+            <div class="content-panel">
+                
+                <div id="panel-obras" class="panel-section active">
+                    <h3>Obras</h3>
+                    <p>Lista de obras ou ferramentas de seleção virão aqui.</p>
+                </div>
+
+                <div id="panel-filtros" class="panel-section">
+                    <h3>Filtros de Pesquisa</h3>
+                    
+                    <form id="form-filtros" onsubmit="event.preventDefault();">
+                        
+                        <div class="filter-group">
+                            <label>Município</label>
+                            <select id="filtro-municipio" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Território</label>
+                            <select id="filtro-territorio" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Eixo</label>
+                            <select id="filtro-eixo" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Órgão</label>
+                            <select id="filtro-orgao" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Situação</label>
+                            <select id="filtro-situacao" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Classificação</label>
+                            <select id="filtro-classificacao" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Sub-Classificação</label>
+                            <select id="filtro-subclassificacao" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Tipologia</label>
+                            <select id="filtro-tipologia" multiple></select>
+                        </div>
+
+                        <div class="filter-actions">
+                            <button type="button" class="btn-limpar" onclick="limparFiltros()">Limpar</button>
+                            <button type="button" class="btn-aplicar" onclick="aplicarFiltros()">Filtrar</button>
+                        </div>
+
+                    </form>
+                </div>
+
+                <div id="panel-legendas" class="panel-section">
+                    <h3>Legendas</h3>
+
+                    <div class="legenda-grupo">
+                        <h4>SITUAÇÃO</h4>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/concluido.png" alt="Concluído">
+                            <span>Concluído</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/em_desenvolvimento.png" alt="Em Desenvolvimento">
+                            <span>Em Desenvolvimento</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/nao_iniciada.png" alt="Não Iniciada">
+                            <span>Não Iniciada</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/paralisado.png" alt="Paralisado">
+                            <span>Paralisado</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/sem_evolucao.png" alt="Sem Evolução">
+                            <span>Sem Evolução</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/cancelada.png" alt="Cancelada">
+                            <span>Cancelada</span>
+                        </div>
+                    </div>
+
+                    <div class="legenda-grupo">
+                        <h4>EIXOS</h4>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/des_rural.png" alt="Rural">
+                            <span>Desenvolvimento Rural</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/des_social.png" alt="Social">
+                            <span>Desenvolvimento Social</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/des_economico.png" alt="Econômico">
+                            <span>Desenvolvimento Econômico</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/educacao.png" alt="Educação">
+                            <span>Educação</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/governadoria.png" alt="Governadoria">
+                            <span>Governadoria</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/infraestrutura.png" alt="Infraestrutura">
+                            <span>Infraestrutura</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/meio_ambiente.png" alt="Meio Ambiente">
+                            <span>Meio Ambiente</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/saude.png" alt="Saúde">
+                            <span>Saúde</span>
+                        </div>
+                        <div class="legenda-item">
+                            <img src="icones/icones_legendas/seguranca.png" alt="Segurança">
+                            <span>Segurança</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="panel-sobre" class="panel-section">
+                    <h3>Sobre a Plataforma</h3>
+                    <p>O <strong>Mapa de Obras do Piauí</strong> é uma ferramenta interativa desenvolvida para promover a transparência e facilitar o monitoramento dos investimentos públicos no estado.</p>
+                    <p style="margin-top: 10px;">Através desta plataforma, o cidadão pode visualizar, de forma georreferenciada, a distribuição das obras e intervenções de infraestrutura em todos os municípios piauienses.</p>
+                    <h4 style="margin-top: 20px; color: #0352AA;">Nossos objetivos:</h4>
+                    <ul class="lista-sobre">
+                        <li><strong>👁️ Transparência:</strong><br>Disponibilizar dados claros sobre valores, prazos e execução física.</li>
+                        <li><strong>📈 Monitoramento:</strong><br>Permitir o acompanhamento do status real de cada empreendimento (em andamento, concluído, paralisado).</li>
+                        <li><strong>🤝 Controle Social:</strong><br>Fornecer informações para que a sociedade participe ativamente da fiscalização dos recursos públicos.</li>
+                    </ul>
+                </div>
+
+            </div>
+        </div>
+
+        <div class="map-wrapper">
+    <iframe src="mapa_obras.html" frameborder="0" id="map-frame"></iframe>
     
-    <script src="https://unpkg.com/leaflet-hash@0.2.1/leaflet-hash.js"></script>
+    <div class="layer-switcher">
+        <button id="btn-mapa" class="layer-btn active" onclick="mudarBase('mapa')">Mapa</button>
+        <button id="btn-satelite" class="layer-btn" onclick="mudarBase('satelite')">Satélite</button>
+    </div>
+</div>
 
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <script>
+        const toggleBtn = document.getElementById('menu-toggle');
+        const sidebarContainer = document.getElementById('sidebar-container');
+        const iconItems = document.querySelectorAll('.icon-item');
+        const panels = document.querySelectorAll('.panel-section');
 
-    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+        // 1. Abrir/Fechar Menu Geral
+        toggleBtn.addEventListener('click', () => {
+            sidebarContainer.classList.toggle('closed');
+        });
 
-    <script src="js/script.js"></script>
-    <script src="js/script.js"></script>
+        // 2. Trocar abas
+        iconItems.forEach(item => {
+            item.addEventListener('click', () => {
+                // Remove ativo de todos
+                iconItems.forEach(i => i.classList.remove('active'));
+                panels.forEach(p => p.classList.remove('active'));
+
+                // Ativa o clicado
+                item.classList.add('active');
+                const targetId = item.getAttribute('data-target');
+                document.getElementById(targetId).classList.add('active');
+
+                // --- CORREÇÃO: RESETAR O SCROLL ---
+                // Pega o painel branco e manda ele subir para o topo
+                document.querySelector('.content-panel').scrollTop = 0;
+
+                // Se o menu estiver fechado, abre ele
+                if(sidebarContainer.classList.contains('closed')) {
+                    sidebarContainer.classList.remove('closed');
+                }
+            });
+        });
+
+        // =======================================================
+        // 3. FUNÇÃO PARA INICIAR OS FILTROS (PERSONALIZADA)
+        // =======================================================
+        
+        window.selectsInstances = {}; 
+        let tentativas = 0; 
+
+        window.iniciarSlimSelect = function() {
+            // Verificação de segurança (caso a internet esteja lenta)
+            if (typeof SlimSelect === 'undefined') {
+                tentativas++;
+                if (tentativas > 50) { 
+                    console.error("ERRO: SlimSelect não carregou.");
+                    return;
+                }
+                setTimeout(window.iniciarSlimSelect, 100);
+                return;
+            }
+
+            // --- CONFIGURAÇÕES PERSONALIZADAS POR CAMPO ---
+            // Aqui você define o texto exato para cada filtro
+            const configs = {
+                'filtro-municipio': { 
+                    placeholder: 'Selecione os Municípios', 
+                    searchPlaceholder: 'Buscar cidade...' 
+                },
+                'filtro-territorio': { 
+                    placeholder: 'Selecione os Territórios', 
+                    searchPlaceholder: 'Buscar território...' 
+                },
+                'filtro-eixo': { 
+                    placeholder: 'Selecione o Eixo', 
+                    searchPlaceholder: 'Buscar eixo...' 
+                },
+                'filtro-orgao': { 
+                    placeholder: 'Selecione o Órgão', 
+                    searchPlaceholder: 'Buscar órgão...' 
+                },
+                'filtro-situacao': { 
+                    placeholder: 'Selecione a Situação', 
+                    searchPlaceholder: 'Buscar status...' 
+                },
+                'filtro-classificacao': { 
+                    placeholder: 'Selecione a Classificação', 
+                    searchPlaceholder: 'Buscar classificação...' 
+                },
+                'filtro-subclassificacao': { 
+                    placeholder: 'Selecione a Sub-Classificação', 
+                    searchPlaceholder: 'Buscar...' 
+                },
+                'filtro-tipologia': { 
+                    placeholder: 'Selecione a Tipologia', 
+                    searchPlaceholder: 'Buscar tipo...' 
+                }
+            };
+
+            const ids = Object.keys(configs);
+
+            ids.forEach(id => {
+                // Se já existir, destroi antes de recriar
+                if (window.selectsInstances[id]) {
+                    window.selectsInstances[id].destroy();
+                }
+
+                try {
+                    const el = document.getElementById(id);
+                    if(el) {
+                        // Configuração Específica para este ID
+                        const configTexto = configs[id];
+
+                        window.selectsInstances[id] = new SlimSelect({
+                            select: '#' + id,
+                            
+                            // Tradução e Personalização (Sintaxe v1.27)
+                            placeholder: configTexto.placeholder,     // Texto quando vazio
+                            searchPlaceholder: configTexto.searchPlaceholder, // Texto dentro da lupa
+                            searchText: 'Nenhum resultado encontrado', // Texto quando a busca falha
+                            
+                            // Outras configs
+                            closeOnSelect: false,
+                            showSearch: true
+                        });
+                    }
+                } catch (e) {
+                    console.error("Erro ao criar filtro para " + id, e);
+                }
+            });
+            console.log("Filtros visuais atualizados e traduzidos!");
+        };
+        // --- FUNÇÃO PARA TROCAR O TIPO DE MAPA ---
+    function mudarBase(tipo) {
+        // 1. Atualiza o visual dos botões
+        document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('btn-' + tipo).classList.add('active');
+
+        // 2. Manda o comando para o mapa dentro do iframe
+        const iframe = document.getElementById('map-frame');
+        if (iframe && iframe.contentWindow && iframe.contentWindow.trocarCamadaBase) {
+            iframe.contentWindow.trocarCamadaBase(tipo);
+        } else {
+            console.warn("Mapa ainda não carregou ou função não encontrada.");
+        }
+    }
+    </script>
+    
 </body>
 </html>
