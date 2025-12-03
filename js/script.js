@@ -123,27 +123,54 @@ function onEachFeatureGeral(feature, layer) {
 // 5. CARREGAMENTO DOS DADOS
 // =========================================
 
+// 1. Configuração do Cluster (PERSONALIZADA: AZUL E SEM NÚMEROS)
 window.clusterPontos = L.markerClusterGroup({
     showCoverageOnHover: false,
     maxClusterRadius: 30,
     disableClusteringAtZoom: 13,
-    spiderfyOnMaxZoom: true
+    spiderfyOnMaxZoom: true,
+    
+    // ESTA FUNÇÃO CRIA O ÍCONE DO CLUSTER (O SEGREDO PARA TIRAR O NÚMERO)
+    iconCreateFunction: function(cluster) {
+        var childCount = cluster.getChildCount();
+        
+        // Define a classe baseada na quantidade (para o CSS pintar de azul)
+        var c = ' marker-cluster-';
+        if (childCount < 10) {
+            c += 'small';  
+        } else if (childCount < 50) {
+            c += 'medium'; 
+        } else {
+            c += 'large';  
+        }
+
+        // Retorna o ícone DIV vazio (sem childCount escrito dentro)
+        return new L.DivIcon({
+            html: '<div></div>', // DIV vazia = Sem número!
+            className: 'marker-cluster' + c,
+            iconSize: new L.Point(40, 40)
+        });
+    }
 });
+
+// Adiciona o cluster ao mapa
 map.addLayer(window.clusterPontos);
 
+// 2. Camada de Linhas Vazia (será preenchida no fetch)
 window.linhasLayer = L.geoJSON(null, {
     style: styleLinhas,
     onEachFeature: onEachFeatureGeral
 });
 map.addLayer(window.linhasLayer);
 
+// 3. Fetch (Baixar) dos Dados
 Promise.all([
     fetch('data/municipios.geojson').then(res => res.json()),
     fetch('data/linhas.geojson').then(res => res.json()),
     fetch('data/pontos.geojson').then(res => res.json())
 ]).then(([municipiosData, linhasDataLocal, pontosDataLocal]) => {
 
-    // A. MUNICÍPIOS
+    // A. MUNICÍPIOS (Sempre Visível)
     L.geoJSON(municipiosData, {
         style: {
             color: '#999',
@@ -158,24 +185,28 @@ Promise.all([
         }
     }).addTo(map);
 
-    // B. SALVAR DADOS GLOBAIS
+    // B. SALVAR DADOS GLOBAIS (Para os filtros funcionarem)
     window.dadosGlobais = {
         pontos: pontosDataLocal,
         linhas: linhasDataLocal
     };
 
-    // C. POVOAR O MAPA
+    // C. POVOAR O MAPA INICIALMENTE
+    
+    // Adiciona Linhas
     window.linhasLayer.addData(linhasDataLocal);
 
+    // Adiciona Pontos ao Cluster
     const pontosGeoJSON = L.geoJSON(pontosDataLocal, {
         pointToLayer: function (feature, latlng) {
+            // Usa sua função obterIcone para definir o ícone da obra individual
             return L.marker(latlng, { icon: obterIcone(feature) });
         },
         onEachFeature: onEachFeatureGeral
     });
     window.clusterPontos.addLayer(pontosGeoJSON);
 
-    // D. INICIALIZAR FILTROS
+    // D. INICIALIZAR OS FILTROS
     inicializarFiltros();
 
 }).catch(error => {
