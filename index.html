@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mapa de Obras - PI</title>
     <link rel="icon" href="icones/icones_menu/dados_pi.png" type="image/png">
+    
     <link rel="stylesheet" href="css/layout.css">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/slim-select/1.27.1/slimselect.min.css" />
@@ -190,27 +191,36 @@
             </div>
         </div>
 
+        <div id="mobile-overlay" class="mobile-overlay"></div>
+
         <div class="map-wrapper">
-    <iframe src="mapa_obras.html" frameborder="0" id="map-frame"></iframe>
-    
-    <div class="layer-switcher">
-        <button id="btn-mapa" class="layer-btn active" onclick="mudarBase('mapa')">Mapa</button>
-        <button id="btn-satelite" class="layer-btn" onclick="mudarBase('satelite')">Satélite</button>
+            <iframe src="mapa_obras.html" frameborder="0" id="map-frame"></iframe>
+            
+            <div class="layer-switcher">
+                <button id="btn-mapa" class="layer-btn active" onclick="mudarBase('mapa')">Mapa</button>
+                <button id="btn-satelite" class="layer-btn" onclick="mudarBase('satelite')">Satélite</button>
+            </div>
+        </div>
     </div>
-</div>
 
     <script>
         const toggleBtn = document.getElementById('menu-toggle');
         const sidebarContainer = document.getElementById('sidebar-container');
+        const mobileOverlay = document.getElementById('mobile-overlay'); // Captura o overlay
         const iconItems = document.querySelectorAll('.icon-item');
         const panels = document.querySelectorAll('.panel-section');
 
-        // 1. Abrir/Fechar Menu Geral
+        // 1. Abrir/Fechar Menu Geral (Hamburguer)
         toggleBtn.addEventListener('click', () => {
             sidebarContainer.classList.toggle('closed');
         });
 
-        // 2. Trocar abas
+        // 2. Fechar Menu ao clicar no Overlay (Só funciona no mobile via CSS)
+        mobileOverlay.addEventListener('click', () => {
+            sidebarContainer.classList.add('closed');
+        });
+
+        // 3. Trocar abas ao clicar nos ícones
         iconItems.forEach(item => {
             item.addEventListener('click', () => {
                 // Remove ativo de todos
@@ -222,8 +232,7 @@
                 const targetId = item.getAttribute('data-target');
                 document.getElementById(targetId).classList.add('active');
 
-                // --- CORREÇÃO: RESETAR O SCROLL ---
-                // Pega o painel branco e manda ele subir para o topo
+                // Reseta o Scroll do painel para o topo
                 document.querySelector('.content-panel').scrollTop = 0;
 
                 // Se o menu estiver fechado, abre ele
@@ -234,14 +243,13 @@
         });
 
         // =======================================================
-        // 3. FUNÇÃO PARA INICIAR OS FILTROS (PERSONALIZADA)
+        // 4. FUNÇÃO PARA INICIAR OS FILTROS (SLIM SELECT)
         // =======================================================
         
         window.selectsInstances = {}; 
         let tentativas = 0; 
 
         window.iniciarSlimSelect = function() {
-            // Verificação de segurança (caso a internet esteja lenta)
             if (typeof SlimSelect === 'undefined') {
                 tentativas++;
                 if (tentativas > 50) { 
@@ -252,47 +260,21 @@
                 return;
             }
 
-            // --- CONFIGURAÇÕES PERSONALIZADAS POR CAMPO ---
-            // Aqui você define o texto exato para cada filtro
+            // Configurações personalizadas por campo
             const configs = {
-                'filtro-municipio': { 
-                    placeholder: 'Selecione os Municípios', 
-                    searchPlaceholder: 'Buscar cidade...' 
-                },
-                'filtro-territorio': { 
-                    placeholder: 'Selecione os Territórios', 
-                    searchPlaceholder: 'Buscar território...' 
-                },
-                'filtro-eixo': { 
-                    placeholder: 'Selecione o Eixo', 
-                    searchPlaceholder: 'Buscar eixo...' 
-                },
-                'filtro-orgao': { 
-                    placeholder: 'Selecione o Órgão', 
-                    searchPlaceholder: 'Buscar órgão...' 
-                },
-                'filtro-situacao': { 
-                    placeholder: 'Selecione a Situação', 
-                    searchPlaceholder: 'Buscar status...' 
-                },
-                'filtro-classificacao': { 
-                    placeholder: 'Selecione a Classificação', 
-                    searchPlaceholder: 'Buscar classificação...' 
-                },
-                'filtro-subclassificacao': { 
-                    placeholder: 'Selecione a Sub-Classificação', 
-                    searchPlaceholder: 'Buscar...' 
-                },
-                'filtro-tipologia': { 
-                    placeholder: 'Selecione a Tipologia', 
-                    searchPlaceholder: 'Buscar tipo...' 
-                }
+                'filtro-municipio': { placeholder: 'Selecione os Municípios', searchPlaceholder: 'Buscar cidade...' },
+                'filtro-territorio': { placeholder: 'Selecione os Territórios', searchPlaceholder: 'Buscar território...' },
+                'filtro-eixo': { placeholder: 'Selecione o Eixo', searchPlaceholder: 'Buscar eixo...' },
+                'filtro-orgao': { placeholder: 'Selecione o Órgão', searchPlaceholder: 'Buscar órgão...' },
+                'filtro-situacao': { placeholder: 'Selecione a Situação', searchPlaceholder: 'Buscar status...' },
+                'filtro-classificacao': { placeholder: 'Selecione a Classificação', searchPlaceholder: 'Buscar classificação...' },
+                'filtro-subclassificacao': { placeholder: 'Selecione a Sub-Classificação', searchPlaceholder: 'Buscar...' },
+                'filtro-tipologia': { placeholder: 'Selecione a Tipologia', searchPlaceholder: 'Buscar tipo...' }
             };
 
             const ids = Object.keys(configs);
 
             ids.forEach(id => {
-                // Se já existir, destroi antes de recriar
                 if (window.selectsInstances[id]) {
                     window.selectsInstances[id].destroy();
                 }
@@ -300,18 +282,12 @@
                 try {
                     const el = document.getElementById(id);
                     if(el) {
-                        // Configuração Específica para este ID
                         const configTexto = configs[id];
-
                         window.selectsInstances[id] = new SlimSelect({
                             select: '#' + id,
-                            
-                            // Tradução e Personalização (Sintaxe v1.27)
-                            placeholder: configTexto.placeholder,     // Texto quando vazio
-                            searchPlaceholder: configTexto.searchPlaceholder, // Texto dentro da lupa
-                            searchText: 'Nenhum resultado encontrado', // Texto quando a busca falha
-                            
-                            // Outras configs
+                            placeholder: configTexto.placeholder,
+                            searchPlaceholder: configTexto.searchPlaceholder,
+                            searchText: 'Nenhum resultado encontrado',
                             closeOnSelect: false,
                             showSearch: true
                         });
@@ -322,21 +298,23 @@
             });
             console.log("Filtros visuais atualizados e traduzidos!");
         };
-        // --- FUNÇÃO PARA TROCAR O TIPO DE MAPA ---
-    function mudarBase(tipo) {
-        // 1. Atualiza o visual dos botões
-        document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
-        document.getElementById('btn-' + tipo).classList.add('active');
 
-        // 2. Manda o comando para o mapa dentro do iframe
-        const iframe = document.getElementById('map-frame');
-        if (iframe && iframe.contentWindow && iframe.contentWindow.trocarCamadaBase) {
-            iframe.contentWindow.trocarCamadaBase(tipo);
-        } else {
-            console.warn("Mapa ainda não carregou ou função não encontrada.");
+        // =======================================================
+        // 5. FUNÇÃO PARA TROCAR O TIPO DE MAPA
+        // =======================================================
+        function mudarBase(tipo) {
+            // Atualiza visual dos botões
+            document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('btn-' + tipo).classList.add('active');
+
+            // Manda o comando para o iframe
+            const iframe = document.getElementById('map-frame');
+            if (iframe && iframe.contentWindow && iframe.contentWindow.trocarCamadaBase) {
+                iframe.contentWindow.trocarCamadaBase(tipo);
+            } else {
+                console.warn("Mapa ainda não carregou ou função não encontrada.");
+            }
         }
-    }
     </script>
-    
 </body>
 </html>
