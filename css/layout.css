@@ -406,3 +406,116 @@ iframe {
 .marker-cluster div {
     color: transparent !important;
 }
+
+/* --- ESTILO DOS DETALHES DA OBRA (SIDEBAR) --- */
+
+.detalhe-item {
+    margin-bottom: 12px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 8px;
+}
+
+.detalhe-item strong {
+    display: block;
+    color: #0352AA;
+    font-size: 12px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+}
+
+.detalhe-item span {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.4;
+    display: block;
+}
+
+/* Barra de Progresso */
+.progress-container {
+    width: 100%;
+    background-color: #e0e0e0;
+    border-radius: 10px;
+    margin: 5px 0;
+    height: 15px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #28a745; /* Verde */
+    text-align: center;
+    line-height: 15px;
+    color: white;
+    font-size: 10px;
+    transition: width 0.5s ease-in-out;
+}
+
+/* Botão dentro do Popup */
+.btn-ver-mais {
+    display: block;
+    width: 100%;
+    margin-top: 10px;
+    padding: 8px;
+    background-color: #0352AA;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    text-align: center;
+    text-decoration: none;
+}
+
+.btn-ver-mais:hover {
+    background-color: #023e8a;
+}
+
+.placeholder-text {
+    color: #777;
+    font-style: italic;
+    text-align: center;
+    margin-top: 50px;
+}
+
+/* --- CORREÇÃO DO MINI MAPA E SCROLL --- */
+
+#mini-mapa-container {
+    width: 100% !important;
+    height: 350px !important;
+    background-color: white; 
+    border: 1px solid #eee;
+    border-radius: 8px;
+    
+    /* SEGREDOS PARA NÃO VAZAR */
+    position: relative !important; /* Mantém ele no fluxo do documento */
+    z-index: 1 !important;         /* Garante que não cubra o texto */
+    display: block;
+    margin-top: 15px;              /* Afasta do título */
+    margin-bottom: 20px;           /* Espaço no final */
+    box-sizing: border-box;        /* Garante que borda não aumente largura */
+    overflow: hidden;              /* Corta qualquer coisa que saia da caixa */
+}
+
+/* Título do Mapa */
+.detalhe-item strong {
+    display: block;
+    margin-bottom: 5px;
+    position: relative; /* Garante que o texto tenha sua própria camada */
+    z-index: 2;         /* Fica ACIMA do mapa */
+    background: white;  /* Opcional: Garante legibilidade */
+}
+
+/* Força o Leaflet a se comportar */
+.leaflet-container {
+    position: absolute !important; /* Dentro do container relativo */
+    top: 0; left: 0; right: 0; bottom: 0;
+    margin: 0 !important;
+    background: transparent !important;
+    outline: none !important;
+}
+
+/* Mata a rolagem horizontal do painel branco */
+.content-panel {
+    overflow-x: hidden !important;
+    padding-right: 5px; /* Espaço para a barra de rolagem não cobrir texto */
+}

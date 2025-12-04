@@ -1,5 +1,5 @@
 // =========================================
-// 1. INICIALIZAÇÃO DO MAPA
+// 1. INICIALIZAÇÃO DO MAPA PRINCIPAL
 // =========================================
 
 var initialBounds = [[-18, -60], [10, -30]];
@@ -9,8 +9,8 @@ if (window.innerWidth <= 600) {
 
 const map = L.map('map', {
     zoomControl: false,
-    maxZoom: 21,        // Permite zoom profundo (para o satélite)
-    minZoom: 6,         // Impede afastar demais
+    maxZoom: 21,
+    minZoom: 6,
     maxBounds: initialBounds,
     maxBoundsViscosity: 1.0 
 }).fitBounds([[-12.5, -45.5], [-2.5, -40.5]]);
@@ -18,28 +18,24 @@ const map = L.map('map', {
 var hash = new L.Hash(map);
 
 // =========================================
-// 2. CAMADAS BASE (OSM + GOOGLE SATÉLITE)
+// 2. CAMADAS BASE
 // =========================================
 
-// MAPA PADRÃO: OpenStreetMap (Limpo)
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 21,       // Permite o mapa ir até o 21
-    maxNativeZoom: 19, // TRUQUE: Só baixa até o 19, depois estica a imagem (Zoom Digital)
+    maxZoom: 21,
+    maxNativeZoom: 19,
     attribution: '© OpenStreetMap'
 });
 
-// MAPA SATÉLITE: Google Híbrido (Alta Resolução)
-const satelliteLayer = L.tileLayer('http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+const satelliteLayer = L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
     maxZoom: 21, 
-    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
     attribution: '© Google Maps'
 });
 
-// Inicia com o mapa padrão (OSM)
 osmLayer.addTo(map);
 
 // =========================================
-// 3. MENU DE CONTROLE (BOTÕES NO TOPO)
+// 3. MENU DE CONTROLE
 // =========================================
 
 window.trocarCamadaBase = function(tipo) {
@@ -53,8 +49,28 @@ window.trocarCamadaBase = function(tipo) {
 };
 
 // =========================================
-// 4. ESTILOS E ÍCONES
+// 4. ESTILOS, ÍCONES E FORMATADORES
 // =========================================
+
+function formatarMoeda(valor) {
+    if (!valor || valor === '0') return 'Não informado';
+    return parseFloat(valor).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
+function formatarData(dataStr) {
+    if (!dataStr) return '-';
+    const dataLimpa = dataStr.split(' ')[0]; 
+    const partes = dataLimpa.split('-');
+    if (partes.length === 3) {
+        return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return dataStr;
+}
+
+function formatarPorcentagem(valor) {
+    if (valor === null || valor === undefined || valor === '') return 0;
+    return parseFloat(valor).toFixed(1).replace('.', ',');
+}
 
 function limparTexto(texto) {
     if (!texto) return '';
@@ -69,18 +85,14 @@ function obterIcone(feature) {
     let eixoRaw = feature.properties.Eixo || 'padrao';
     let statusRaw = feature.properties.Status_atual || 'indefinido';
 
-    if (statusRaw === 'no_progress') {
-        statusRaw = 'sem_evolucao';
-    }
+    if (statusRaw === 'no_progress') statusRaw = 'sem_evolucao';
 
     const eixoLimpo = limparTexto(eixoRaw);
     const statusLimpo = limparTexto(statusRaw);
-    
     const nomeArquivo = `${eixoLimpo}_${statusLimpo}`;
 
     return L.icon({
         iconUrl: `icones/icones_camadas/${nomeArquivo}.svg`,
-        // iconUrl: 'icones/icones_menu/obras.png', // Fallback se precisar
         iconSize: [32, 32],
         iconAnchor: [16, 32],
         popupAnchor: [0, -32]
@@ -88,34 +100,235 @@ function obterIcone(feature) {
 }
 
 function styleLinhas(feature) {
-    return {
-        color: '#FF4500',
-        weight: 4,
-        opacity: 0.8
-    };
+    return { color: '#FF4500', weight: 4, opacity: 0.8 };
 }
 
-function onEachFeatureGeral(feature, layer) {
-    if (feature.properties) {
-        let p = feature.properties;
-        let html = `<div class="popup-content" style="min-width: 200px; font-family: sans-serif;">`;
-        
-        if(p.Eixo) {
-            html += `<h3 style="margin:0 0 5px 0;">${p.Eixo}</h3>`;
-        } else {
-            html += `<h3>Detalhes</h3>`;
+// =========================================
+// FUNÇÃO ESPECIAL: MINI-MAPA NO SIDEBAR
+// =========================================
+window.miniMapInstance = null; 
+
+function renderizarMiniMapaMunicipios(codigosIbgeString) {
+    // 1. Limpeza Segura
+    // Se já existe um mapa, tentamos removê-lo. Se der erro (pq a div sumiu), ignoramos.
+    try {
+        if (window.miniMapInstance) {
+            window.miniMapInstance.remove();
+            window.miniMapInstance = null;
         }
-        
-        // Campos técnicos para esconder
-        const ignorar = ['id', 'fid', 'geometry', 'project_id', 'element_name', 'origem', 'tipo_geo', 'COD_IBGE_COMPOSTO', 'tags', 'provisory', 'definitive'];
-        
-        for (const key in p) {
-            if (!ignorar.includes(key) && p[key] && key !== 'Eixo') {
-                 html += `<b>${key}:</b> ${p[key]}<br>`;
+    } catch (e) { console.log("Limpando referência antiga do mapa"); }
+
+    // 2. Prepara os códigos alvo
+    let alvos = [];
+    if (codigosIbgeString) {
+        alvos = String(codigosIbgeString).split('-').map(c => c.trim());
+    }
+
+    // Acessa o documento pai
+    if (!window.parent || !window.parent.document) return;
+    const containerMiniMapa = window.parent.document.getElementById('mini-mapa-container');
+
+    // Se o container não existe ainda, espera um pouco e tenta de novo (Segurança)
+    if (!containerMiniMapa) {
+        console.warn("Container do mini-mapa não encontrado. Tentando novamente em 100ms...");
+        setTimeout(() => renderizarMiniMapaMunicipios(codigosIbgeString), 100);
+        return;
+    }
+
+    // 3. Cria o mapa
+    try {
+        window.miniMapInstance = L.map(containerMiniMapa, {
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            trackResize: false
+        });
+
+        // 4. Carrega o GeoJSON dos Municípios
+        if (window.dadosGlobais && window.dadosGlobais.municipios) {
+            
+            const layerMunicipios = L.geoJSON(window.dadosGlobais.municipios, {
+                style: function(feature) {
+                    const p = feature.properties;
+                    
+                    // --- CORREÇÃO DA BUSCA PELO CÓDIGO ---
+                    // Procura exatamente "Código do IBGE" conforme seu arquivo
+                    const codigoGeo = String(
+                        p['Código do IBGE'] || 
+                        p['COD_IBGE'] || 
+                        p['CD_MUN'] || 
+                        p['id'] || 
+                        ''
+                    );
+                    
+                    const isTarget = alvos.includes(codigoGeo);
+
+                    return {
+                        fillColor: isTarget ? '#0352AA' : '#e0e0e0', // Azul se for alvo, Cinza se não
+                        color: isTarget ? '#0352AA' : '#ffffff',     // Borda Azul ou Branca
+                        weight: isTarget ? 1 : 0.5,
+                        fillOpacity: 1,
+                        opacity: 1
+                    };
+                }
+            }).addTo(window.miniMapInstance);
+
+            // 5. Ajusta o zoom
+            if (alvos.length > 0) {
+                const layersAlvo = layerMunicipios.getLayers().filter(l => {
+                    const p = l.feature.properties;
+                    const codigoGeo = String(p['Código do IBGE'] || p['COD_IBGE'] || p['CD_MUN'] || '');
+                    return alvos.includes(codigoGeo);
+                });
+
+                if (layersAlvo.length > 0) {
+                    const featureGroup = L.featureGroup(layersAlvo);
+                    // Pequeno delay para garantir renderização antes do zoom
+                    setTimeout(() => {
+                        window.miniMapInstance.invalidateSize();
+                        window.miniMapInstance.fitBounds(featureGroup.getBounds(), { padding: [80, 80] });
+                    }, 200);
+                } else {
+                    window.miniMapInstance.fitBounds(layerMunicipios.getBounds());
+                }
+            } else {
+                window.miniMapInstance.fitBounds(layerMunicipios.getBounds());
             }
         }
+    } catch (error) {
+        console.error("Erro ao renderizar mini-mapa:", error);
+    }
+}
+
+
+// --- FUNÇÃO PARA ABRIR DETALHES NA SIDEBAR ---
+window.todasObras = {}; 
+
+window.abrirDetalhesSidebar = function(id) {
+    const p = window.todasObras[id];
+    if (!p) return;
+
+    const docPai = window.parent.document;
+    const divConteudo = docPai.getElementById('conteudo-detalhes');
+    const sidebar = docPai.getElementById('sidebar-container');
+    
+    if (!divConteudo || !sidebar) return;
+
+    sidebar.classList.remove('closed');
+
+    docPai.querySelectorAll('.icon-item').forEach(i => i.classList.remove('active'));
+    docPai.querySelectorAll('.panel-section').forEach(pan => pan.classList.remove('active'));
+    
+    const abaObras = docPai.querySelector('[data-target="panel-obras"]');
+    if(abaObras) abaObras.classList.add('active');
+    
+    const panelObras = docPai.getElementById('panel-obras');
+    if(panelObras) panelObras.classList.add('active');
+
+    const campos = [
+        { chave: 'project_id', label: 'ID da Ação' },
+        { chave: 'Eixo', label: 'Eixo' },
+        { chave: 'Nome da Ação', label: 'Nome da Ação' },
+        { chave: 'Orgão da Açao', label: 'Órgão Responsável' },
+        { chave: 'Status_atual', label: 'Situação Atual' },
+        { chave: 'Data Criacao', label: 'Data de Criação', tipo: 'data' },
+        { chave: 'Data Inicio', label: 'Data de Início', tipo: 'data' },
+        { chave: 'Data Final', label: 'Data Final', tipo: 'data' },
+        { chave: 'Prazo de conclusão', label: 'Prazo de Conclusão', tipo: 'data' },
+        { chave: 'Data da OS', label: 'Data da OS', tipo: 'data' },
+        { chave: 'data_celebracao', label: 'Data de Celebração', tipo: 'data' },
+        { chave: 'data_inicio_vigencia', label: 'Início da Vigência', tipo: 'data' },
+        { chave: 'data_fim_vigencia_total', label: 'Fim da Vigência', tipo: 'data' },
+        { chave: 'Orçamento previsto total', label: 'Orçamento Previsto', tipo: 'moeda' },
+        { chave: 'valor_contrato', label: 'Valor do Contrato', tipo: 'moeda' },
+        { chave: 'valor_pago', label: 'Valor Pago', tipo: 'moeda' },
+        { chave: 'CLASSIFICAÇÃO', label: 'Classificação' },
+        { chave: 'SUB-CLASSIFICAÇÃO OBRA', label: 'Sub-Classificação' },
+        { chave: 'TIPOLOGIA', label: 'Tipologia' },
+        { chave: 'Localizacao (municipio)', label: 'Localização' } 
+    ];
+
+    let html = '';
+    let perc = p['Percentual de Execução da Ação'] ? parseFloat(p['Percentual de Execução da Ação']) : 0;
+    let percTexto = formatarPorcentagem(p['Percentual de Execução da Ação']);
+    
+    html += `<div class="detalhe-item">
+                <strong>Percentual de Execução</strong>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${perc}%"></div>
+                </div>
+                <span style="font-size:12px; text-align:right; color:#555; display:block;">${percTexto}% Concluído</span>
+             </div>`;
+
+    campos.forEach(campo => {
+        let valor = p[campo.chave];
+        if (valor !== null && valor !== undefined && valor !== '') {
+            if (campo.tipo === 'moeda') valor = formatarMoeda(valor);
+            if (campo.tipo === 'data') valor = formatarData(valor);
+            html += `<div class="detalhe-item"><strong>${campo.label}</strong><span>${valor}</span></div>`;
+        }
+    });
+
+    // Injeta a DIV do mapa
+    html += `<div class="detalhe-item" style="border:none; margin-top:15px;">
+                <strong>Mapa de Localização</strong>
+                <div id="mini-mapa-container" style="height: 200px; width: 100%; background: white; border-radius: 8px; margin-top: 5px;"></div>
+             </div>`;
+
+    divConteudo.innerHTML = html;
+    
+    const contentPanel = docPai.querySelector('.content-panel');
+    if(contentPanel) contentPanel.scrollTop = 0;
+
+    // Chama o renderizador com um pequeno delay para a DIV existir no DOM
+    setTimeout(() => {
+        renderizarMiniMapaMunicipios(p['COD_IBGE_COMPOSTO']);
+    }, 200);
+};
+
+// --- CONFIGURAÇÃO DO POPUP ---
+function onEachFeatureGeral(feature, layer) {
+    if (feature.properties) {
+        const p = feature.properties;
+        const idRaw = p['fid'] || p['id'] || Math.random();
+        const idUnico = String(idRaw).replace(/['"]/g, ""); 
+        
+        window.todasObras[idUnico] = p;
+
+        let html = `<div class="popup-content" style="min-width: 230px; font-family: 'Segoe UI', sans-serif; font-size: 13px;">`;
+        if(p.Eixo) {
+            html += `<h3 style="margin: 0 0 10px 0; color: #0352AA; border-bottom: 2px solid #eee; padding-bottom: 8px; font-size: 14px;">${p.Eixo}</h3>`;
+        }
+
+        const linhaStyle = "margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #f0f0f0; line-height: 1.4;";
+
+        if(p['project_id']) 
+            html += `<div style="${linhaStyle}"><strong style="color:#555;">ID da Ação:</strong> ${p['project_id']}</div>`;
+        if(p['Nome da Ação']) 
+            html += `<div style="${linhaStyle}"><strong style="color:#555;">Ação:</strong><br>${p['Nome da Ação']}</div>`;
+        if(p['Orgão da Açao']) 
+            html += `<div style="${linhaStyle}"><strong style="color:#555;">Órgão:</strong> ${p['Orgão da Açao']}</div>`;
+        if(p['Orçamento previsto total']) 
+            html += `<div style="${linhaStyle}"><strong style="color:#555;">Orçamento Previsto:</strong><br> ${formatarMoeda(p['Orçamento previsto total'])}</div>`;
+
+        html += `<button class="btn-ver-mais" onclick="window.abrirDetalhesSidebar('${idUnico}')">Detalhes</button>`;
         html += `</div>`;
-        layer.bindPopup(html);
+        
+        layer.bindPopup(html, { closeButton: false });
+
+        let timer;
+        layer.on('mouseover', function (e) { clearTimeout(timer); this.openPopup(); });
+        layer.on('mouseout', function (e) { timer = setTimeout(() => { this.closePopup(); }, 300); });
+        layer.on('popupopen', function (e) {
+            const popupNode = e.popup._container; 
+            if (popupNode) {
+                L.DomEvent.on(popupNode, 'mouseenter', () => { clearTimeout(timer); });
+                L.DomEvent.on(popupNode, 'mouseleave', () => { timer = setTimeout(() => { this.closePopup(); }, 300); });
+            }
+        });
     }
 }
 
@@ -123,61 +336,41 @@ function onEachFeatureGeral(feature, layer) {
 // 5. CARREGAMENTO DOS DADOS
 // =========================================
 
-// 1. Configuração do Cluster (PERSONALIZADA: AZUL E SEM NÚMEROS)
 window.clusterPontos = L.markerClusterGroup({
     showCoverageOnHover: false,
     maxClusterRadius: 30,
     disableClusteringAtZoom: 13,
     spiderfyOnMaxZoom: true,
-    
-    // ESTA FUNÇÃO CRIA O ÍCONE DO CLUSTER (O SEGREDO PARA TIRAR O NÚMERO)
     iconCreateFunction: function(cluster) {
         var childCount = cluster.getChildCount();
-        
-        // Define a classe baseada na quantidade (para o CSS pintar de azul)
         var c = ' marker-cluster-';
-        if (childCount < 10) {
-            c += 'small';  
-        } else if (childCount < 50) {
-            c += 'medium'; 
-        } else {
-            c += 'large';  
-        }
+        if (childCount < 10) c += 'small';
+        else if (childCount < 50) c += 'medium';
+        else c += 'large';
 
-        // Retorna o ícone DIV vazio (sem childCount escrito dentro)
         return new L.DivIcon({
-            html: '<div></div>', // DIV vazia = Sem número!
+            html: '<div></div>',
             className: 'marker-cluster' + c,
             iconSize: new L.Point(40, 40)
         });
     }
 });
-
-// Adiciona o cluster ao mapa
 map.addLayer(window.clusterPontos);
 
-// 2. Camada de Linhas Vazia (será preenchida no fetch)
 window.linhasLayer = L.geoJSON(null, {
     style: styleLinhas,
     onEachFeature: onEachFeatureGeral
 });
 map.addLayer(window.linhasLayer);
 
-// 3. Fetch (Baixar) dos Dados
 Promise.all([
     fetch('data/municipios.geojson').then(res => res.json()),
     fetch('data/linhas.geojson').then(res => res.json()),
     fetch('data/pontos.geojson').then(res => res.json())
 ]).then(([municipiosData, linhasDataLocal, pontosDataLocal]) => {
 
-    // A. MUNICÍPIOS (Sempre Visível)
     L.geoJSON(municipiosData, {
-        style: {
-            color: '#999',
-            weight: 1,
-            fillColor: '#3388ff',
-            fillOpacity: 0.1
-        },
+        style: { color: '#999', weight: 1, fillColor: '#3388ff', fillOpacity: 0.1 },
         onEachFeature: function(feature, layer) {
              if(feature.properties && feature.properties.nm_mun) {
                  layer.bindTooltip(feature.properties.nm_mun);
@@ -185,34 +378,27 @@ Promise.all([
         }
     }).addTo(map);
 
-    // B. SALVAR DADOS GLOBAIS (Para os filtros funcionarem)
     window.dadosGlobais = {
         pontos: pontosDataLocal,
-        linhas: linhasDataLocal
+        linhas: linhasDataLocal,
+        municipios: municipiosData
     };
 
-    // C. POVOAR O MAPA INICIALMENTE
-    
-    // Adiciona Linhas
     window.linhasLayer.addData(linhasDataLocal);
 
-    // Adiciona Pontos ao Cluster
     const pontosGeoJSON = L.geoJSON(pontosDataLocal, {
         pointToLayer: function (feature, latlng) {
-            // Usa sua função obterIcone para definir o ícone da obra individual
             return L.marker(latlng, { icon: obterIcone(feature) });
         },
         onEachFeature: onEachFeatureGeral
     });
     window.clusterPontos.addLayer(pontosGeoJSON);
 
-    // D. INICIALIZAR OS FILTROS
     inicializarFiltros();
 
 }).catch(error => {
     console.error("ERRO FATAL ao carregar GeoJSON:", error);
 });
-
 
 // =========================================
 // 6. LÓGICA DE FILTROS
@@ -230,10 +416,7 @@ const listaMunicipios = [
 ];
 
 function inicializarFiltros() {
-    if (!window.parent || !window.parent.document) {
-        console.warn("Aviso: Filtros não encontrados.");
-        return;
-    }
+    if (!window.parent || !window.parent.document) return;
 
     preencherSelect('filtro-municipio', listaMunicipios);
     preencherSelect('filtro-territorio', listaTerritorios);
@@ -308,8 +491,6 @@ function aplicarFiltros() {
         tipologia: getSelectedValues('filtro-tipologia')
     };
 
-    console.log("Aplicando filtros:", filtros);
-
     window.clusterPontos.clearLayers();
     window.linhasLayer.clearLayers();
     
@@ -359,19 +540,16 @@ function checarFiltro(feature, filtros) {
     const subClassDados = getVal('SUB-CLASSIFICAÇÃO OBRA');
     const tipoDados = getVal('TIPOLOGIA');
 
-    // 1. Municípios
     if (filtros.municipio.length > 0) {
         const match = filtros.municipio.some(filtro => munDados.includes(filtro.toUpperCase()));
         if (!match) return false;
     }
 
-    // 2. Territórios
     if (filtros.territorio.length > 0) {
         const match = filtros.territorio.some(filtro => terrDados.includes(filtro.toUpperCase()));
         if (!match) return false;
     }
 
-    // 3. Outros Filtros
     if (filtros.orgao.length > 0 && !filtros.orgao.includes(orgaoDados)) return false;
     if (filtros.situacao.length > 0 && !filtros.situacao.includes(sitDados)) return false;
     if (filtros.eixo.length > 0 && !filtros.eixo.includes(eixoDados)) return false;
