@@ -47,9 +47,9 @@
             <div class="content-panel">
                 
                 <div id="panel-obras" class="panel-section active">
-                    <h3>Detalhes da Obra</h3>
+                    <h3>Obras</h3>
                     <div id="conteudo-detalhes">
-                        <p class="placeholder-text">Selecione uma obra no mapa ou clique em "Mais Informações" no popup para ver os detalhes completos aqui.</p>
+                        <p class="placeholder-text">Selecione uma obra no mapa ou clique em "Detalhes" no popup para ver as informações completas aqui.</p>
                     </div>
                 </div>
 
@@ -69,6 +69,11 @@
                         </div>
 
                         <div class="filter-group">
+                            <label>ID da Ação</label>
+                            <select id="filtro-id-acao" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
                             <label>Eixo</label>
                             <select id="filtro-eixo" multiple></select>
                         </div>
@@ -84,18 +89,18 @@
                         </div>
 
                         <div class="filter-group">
-                            <label>Classificação</label>
-                            <select id="filtro-classificacao" multiple></select>
-                        </div>
-
-                        <div class="filter-group">
-                            <label>Sub-Classificação</label>
-                            <select id="filtro-subclassificacao" multiple></select>
-                        </div>
-
-                        <div class="filter-group">
                             <label>Tipologia</label>
                             <select id="filtro-tipologia" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Ano (Data Celebração)</label>
+                            <select id="filtro-ano" multiple></select>
+                        </div>
+
+                        <div class="filter-group">
+                            <label>Data do Recebimento</label>
+                            <select id="filtro-recebimento" multiple></select>
                         </div>
 
                         <div class="filter-actions">
@@ -130,10 +135,6 @@
                         <div class="legenda-item">
                             <img src="icones/icones_legendas/sem_evolucao.png" alt="Sem Evolução">
                             <span>Sem Evolução</span>
-                        </div>
-                        <div class="legenda-item">
-                            <img src="icones/icones_legendas/cancelada.png" alt="Cancelada">
-                            <span>Cancelada</span>
                         </div>
                     </div>
 
@@ -208,46 +209,36 @@
     <script>
         const toggleBtn = document.getElementById('menu-toggle');
         const sidebarContainer = document.getElementById('sidebar-container');
-        const mobileOverlay = document.getElementById('mobile-overlay'); // Captura o overlay
+        const mobileOverlay = document.getElementById('mobile-overlay');
         const iconItems = document.querySelectorAll('.icon-item');
         const panels = document.querySelectorAll('.panel-section');
 
-        // 1. Abrir/Fechar Menu Geral (Hamburguer)
         toggleBtn.addEventListener('click', () => {
             sidebarContainer.classList.toggle('closed');
         });
 
-        // 2. Fechar Menu ao clicar no Overlay (Só funciona no mobile via CSS)
         mobileOverlay.addEventListener('click', () => {
             sidebarContainer.classList.add('closed');
         });
 
-        // 3. Trocar abas ao clicar nos ícones
         iconItems.forEach(item => {
             item.addEventListener('click', () => {
-                // Remove ativo de todos
                 iconItems.forEach(i => i.classList.remove('active'));
                 panels.forEach(p => p.classList.remove('active'));
 
-                // Ativa o clicado
                 item.classList.add('active');
                 const targetId = item.getAttribute('data-target');
                 document.getElementById(targetId).classList.add('active');
 
-                // Reseta o Scroll do painel para o topo
                 document.querySelector('.content-panel').scrollTop = 0;
 
-                // Se o menu estiver fechado, abre ele
                 if(sidebarContainer.classList.contains('closed')) {
                     sidebarContainer.classList.remove('closed');
                 }
             });
         });
 
-        // =======================================================
-        // 4. FUNÇÃO PARA INICIAR OS FILTROS (SLIM SELECT)
-        // =======================================================
-        
+        // --- FUNÇÃO DE INICIALIZAÇÃO DOS FILTROS (SLIM SELECT) ---
         window.selectsInstances = {}; 
         let tentativas = 0; 
 
@@ -262,16 +253,16 @@
                 return;
             }
 
-            // Configurações personalizadas por campo
             const configs = {
                 'filtro-municipio': { placeholder: 'Selecione os Municípios', searchPlaceholder: 'Buscar cidade...' },
                 'filtro-territorio': { placeholder: 'Selecione os Territórios', searchPlaceholder: 'Buscar território...' },
+                'filtro-id-acao': { placeholder: 'Selecione o ID', searchPlaceholder: 'Buscar ID...' }, // NOVO
                 'filtro-eixo': { placeholder: 'Selecione o Eixo', searchPlaceholder: 'Buscar eixo...' },
                 'filtro-orgao': { placeholder: 'Selecione o Órgão', searchPlaceholder: 'Buscar órgão...' },
                 'filtro-situacao': { placeholder: 'Selecione a Situação', searchPlaceholder: 'Buscar status...' },
-                'filtro-classificacao': { placeholder: 'Selecione a Classificação', searchPlaceholder: 'Buscar classificação...' },
-                'filtro-subclassificacao': { placeholder: 'Selecione a Sub-Classificação', searchPlaceholder: 'Buscar...' },
-                'filtro-tipologia': { placeholder: 'Selecione a Tipologia', searchPlaceholder: 'Buscar tipo...' }
+                'filtro-tipologia': { placeholder: 'Selecione a Tipologia', searchPlaceholder: 'Buscar tipo...' },
+                'filtro-ano': { placeholder: 'Selecione o Ano', searchPlaceholder: 'Buscar ano...' },
+                'filtro-recebimento': { placeholder: 'Data de Recebimento', searchPlaceholder: 'Buscar data...' }
             };
 
             const ids = Object.keys(configs);
@@ -301,20 +292,13 @@
             console.log("Filtros visuais atualizados e traduzidos!");
         };
 
-        // =======================================================
-        // 5. FUNÇÃO PARA TROCAR O TIPO DE MAPA
-        // =======================================================
         function mudarBase(tipo) {
-            // Atualiza visual dos botões
             document.querySelectorAll('.layer-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('btn-' + tipo).classList.add('active');
 
-            // Manda o comando para o iframe
             const iframe = document.getElementById('map-frame');
             if (iframe && iframe.contentWindow && iframe.contentWindow.trocarCamadaBase) {
                 iframe.contentWindow.trocarCamadaBase(tipo);
-            } else {
-                console.warn("Mapa ainda não carregou ou função não encontrada.");
             }
         }
     </script>

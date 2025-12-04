@@ -109,8 +109,6 @@ function styleLinhas(feature) {
 window.miniMapInstance = null; 
 
 function renderizarMiniMapaMunicipios(codigosIbgeString) {
-    // 1. Limpeza Segura
-    // Se já existe um mapa, tentamos removê-lo. Se der erro (pq a div sumiu), ignoramos.
     try {
         if (window.miniMapInstance) {
             window.miniMapInstance.remove();
@@ -118,24 +116,20 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
         }
     } catch (e) { console.log("Limpando referência antiga do mapa"); }
 
-    // 2. Prepara os códigos alvo
     let alvos = [];
     if (codigosIbgeString) {
         alvos = String(codigosIbgeString).split('-').map(c => c.trim());
     }
 
-    // Acessa o documento pai
     if (!window.parent || !window.parent.document) return;
     const containerMiniMapa = window.parent.document.getElementById('mini-mapa-container');
 
-    // Se o container não existe ainda, espera um pouco e tenta de novo (Segurança)
     if (!containerMiniMapa) {
         console.warn("Container do mini-mapa não encontrado. Tentando novamente em 100ms...");
         setTimeout(() => renderizarMiniMapaMunicipios(codigosIbgeString), 100);
         return;
     }
 
-    // 3. Cria o mapa
     try {
         window.miniMapInstance = L.map(containerMiniMapa, {
             zoomControl: false,
@@ -147,15 +141,11 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
             trackResize: false
         });
 
-        // 4. Carrega o GeoJSON dos Municípios
         if (window.dadosGlobais && window.dadosGlobais.municipios) {
             
             const layerMunicipios = L.geoJSON(window.dadosGlobais.municipios, {
                 style: function(feature) {
                     const p = feature.properties;
-                    
-                    // --- CORREÇÃO DA BUSCA PELO CÓDIGO ---
-                    // Procura exatamente "Código do IBGE" conforme seu arquivo
                     const codigoGeo = String(
                         p['Código do IBGE'] || 
                         p['COD_IBGE'] || 
@@ -167,7 +157,7 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
                     const isTarget = alvos.includes(codigoGeo);
 
                     return {
-                        fillColor: isTarget ? '#0352AA' : '#e0e0e0', // Azul se for alvo, Cinza se não
+                        fillColor: isTarget ? '#0352AA' : '#e0e0e0', // Azul se for o alvo
                         color: isTarget ? '#0352AA' : '#ffffff',     // Borda Azul ou Branca
                         weight: isTarget ? 1 : 0.5,
                         fillOpacity: 1,
@@ -176,7 +166,6 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
                 }
             }).addTo(window.miniMapInstance);
 
-            // 5. Ajusta o zoom
             if (alvos.length > 0) {
                 const layersAlvo = layerMunicipios.getLayers().filter(l => {
                     const p = l.feature.properties;
@@ -186,10 +175,10 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
 
                 if (layersAlvo.length > 0) {
                     const featureGroup = L.featureGroup(layersAlvo);
-                    // Pequeno delay para garantir renderização antes do zoom
                     setTimeout(() => {
                         window.miniMapInstance.invalidateSize();
-                        window.miniMapInstance.fitBounds(featureGroup.getBounds(), { padding: [80, 80] });
+                        // Padding 100 para afastar o zoom
+                        window.miniMapInstance.fitBounds(featureGroup.getBounds(), { padding: [100, 100] });
                     }, 200);
                 } else {
                     window.miniMapInstance.fitBounds(layerMunicipios.getBounds());
@@ -234,7 +223,8 @@ window.abrirDetalhesSidebar = function(id) {
         { chave: 'Nome da Ação', label: 'Nome da Ação' },
         { chave: 'Orgão da Açao', label: 'Órgão Responsável' },
         { chave: 'Status_atual', label: 'Situação Atual' },
-        { chave: 'Data Criacao', label: 'Data de Criação', tipo: 'data' },
+        
+        // Data de Criação REMOVIDA
         { chave: 'Data Inicio', label: 'Data de Início', tipo: 'data' },
         { chave: 'Data Final', label: 'Data Final', tipo: 'data' },
         { chave: 'Prazo de conclusão', label: 'Prazo de Conclusão', tipo: 'data' },
@@ -242,12 +232,19 @@ window.abrirDetalhesSidebar = function(id) {
         { chave: 'data_celebracao', label: 'Data de Celebração', tipo: 'data' },
         { chave: 'data_inicio_vigencia', label: 'Início da Vigência', tipo: 'data' },
         { chave: 'data_fim_vigencia_total', label: 'Fim da Vigência', tipo: 'data' },
+
+        // Financeiro
         { chave: 'Orçamento previsto total', label: 'Orçamento Previsto', tipo: 'moeda' },
         { chave: 'valor_contrato', label: 'Valor do Contrato', tipo: 'moeda' },
         { chave: 'valor_pago', label: 'Valor Pago', tipo: 'moeda' },
+
+        // Técnicos
         { chave: 'CLASSIFICAÇÃO', label: 'Classificação' },
         { chave: 'SUB-CLASSIFICAÇÃO OBRA', label: 'Sub-Classificação' },
         { chave: 'TIPOLOGIA', label: 'Tipologia' },
+        { chave: 'RECEBIMENTO', label: 'Data do Recebimento', tipo: 'data' },
+        
+        // Localização no final
         { chave: 'Localizacao (municipio)', label: 'Localização' } 
     ];
 
@@ -273,9 +270,9 @@ window.abrirDetalhesSidebar = function(id) {
     });
 
     // Injeta a DIV do mapa
-    html += `<div class="detalhe-item" style="border:none; margin-top:15px;">
-                <strong>Mapa de Localização</strong>
-                <div id="mini-mapa-container" style="height: 200px; width: 100%; background: white; border-radius: 8px; margin-top: 5px;"></div>
+    html += `<div class="detalhe-item" style="border:none; margin-top:20px; clear:both; width:100%;">
+                <strong style="display:block; margin-bottom:10px;">Mapa de Localização</strong>
+                <div id="mini-mapa-container"></div>
              </div>`;
 
     divConteudo.innerHTML = html;
@@ -311,8 +308,8 @@ function onEachFeatureGeral(feature, layer) {
             html += `<div style="${linhaStyle}"><strong style="color:#555;">Ação:</strong><br>${p['Nome da Ação']}</div>`;
         if(p['Orgão da Açao']) 
             html += `<div style="${linhaStyle}"><strong style="color:#555;">Órgão:</strong> ${p['Orgão da Açao']}</div>`;
-        if(p['Orçamento previsto total']) 
-            html += `<div style="${linhaStyle}"><strong style="color:#555;">Orçamento Previsto:</strong><br> ${formatarMoeda(p['Orçamento previsto total'])}</div>`;
+        
+        // Orçamento Previsto REMOVIDO DAQUI
 
         html += `<button class="btn-ver-mais" onclick="window.abrirDetalhesSidebar('${idUnico}')">Detalhes</button>`;
         html += `</div>`;
@@ -429,17 +426,28 @@ function inicializarFiltros() {
 
     const orgaos = getUniqueValues(todosDados, 'Orgão da Açao');
     const situacoes = getUniqueValues(todosDados, 'Status_atual');
-    const classificacoes = getUniqueValues(todosDados, 'CLASSIFICAÇÃO');
-    const subClassificacoes = getUniqueValues(todosDados, 'SUB-CLASSIFICAÇÃO OBRA');
     const eixos = getUniqueValues(todosDados, 'Eixo');
     const tipologias = getUniqueValues(todosDados, 'TIPOLOGIA');
+    const recebimentos = getUniqueValues(todosDados, 'RECEBIMENTO');
+    const idsAcao = getUniqueValues(todosDados, 'project_id'); // Novo: IDs de ação
+
+    // Extrai Anos da data de celebração
+    const anosCelebracao = new Set();
+    todosDados.forEach(f => {
+        const val = f.properties['data_celebracao'];
+        if(val && val.length >= 4) {
+            anosCelebracao.add(val.substring(0, 4));
+        }
+    });
+    const listaAnos = Array.from(anosCelebracao).sort().reverse();
 
     preencherSelect('filtro-orgao', orgaos);
     preencherSelect('filtro-situacao', situacoes);
-    preencherSelect('filtro-classificacao', classificacoes);
-    preencherSelect('filtro-subclassificacao', subClassificacoes);
     preencherSelect('filtro-eixo', eixos);
     preencherSelect('filtro-tipologia', tipologias);
+    preencherSelect('filtro-ano', listaAnos);
+    preencherSelect('filtro-recebimento', recebimentos);
+    preencherSelect('filtro-id-acao', idsAcao); // Preenche o select do ID da ação
 
     if (window.parent.iniciarSlimSelect) {
         window.parent.iniciarSlimSelect();
@@ -486,9 +494,10 @@ function aplicarFiltros() {
         orgao: getSelectedValues('filtro-orgao'),
         situacao: getSelectedValues('filtro-situacao'),
         eixo: getSelectedValues('filtro-eixo'),
-        classificacao: getSelectedValues('filtro-classificacao'),
-        subclassificacao: getSelectedValues('filtro-subclassificacao'),
-        tipologia: getSelectedValues('filtro-tipologia')
+        tipologia: getSelectedValues('filtro-tipologia'),
+        ano: getSelectedValues('filtro-ano'),
+        recebimento: getSelectedValues('filtro-recebimento'),
+        idAcao: getSelectedValues('filtro-id-acao') // Novo filtro capturado
     };
 
     window.clusterPontos.clearLayers();
@@ -536,26 +545,29 @@ function checarFiltro(feature, filtros) {
     const orgaoDados = getVal('Orgão da Açao');
     const sitDados = getVal('Status_atual');
     const eixoDados = getVal('Eixo');
-    const classDados = getVal('CLASSIFICAÇÃO');
-    const subClassDados = getVal('SUB-CLASSIFICAÇÃO OBRA');
     const tipoDados = getVal('TIPOLOGIA');
+    
+    const dataCelebracao = getVal('data_celebracao');
+    const anoCelebracao = dataCelebracao.length >= 4 ? dataCelebracao.substring(0, 4) : "";
+    const recebimentoDados = getVal('RECEBIMENTO');
+    const idAcaoDados = getVal('project_id'); // Novo dado para comparar
 
+    // Filtros
     if (filtros.municipio.length > 0) {
         const match = filtros.municipio.some(filtro => munDados.includes(filtro.toUpperCase()));
         if (!match) return false;
     }
-
     if (filtros.territorio.length > 0) {
         const match = filtros.territorio.some(filtro => terrDados.includes(filtro.toUpperCase()));
         if (!match) return false;
     }
-
     if (filtros.orgao.length > 0 && !filtros.orgao.includes(orgaoDados)) return false;
     if (filtros.situacao.length > 0 && !filtros.situacao.includes(sitDados)) return false;
     if (filtros.eixo.length > 0 && !filtros.eixo.includes(eixoDados)) return false;
-    if (filtros.classificacao.length > 0 && !filtros.classificacao.includes(classDados)) return false;
-    if (filtros.subclassificacao.length > 0 && !filtros.subclassificacao.includes(subClassDados)) return false;
     if (filtros.tipologia.length > 0 && !filtros.tipologia.includes(tipoDados)) return false;
+    if (filtros.ano.length > 0 && !filtros.ano.includes(anoCelebracao)) return false;
+    if (filtros.recebimento.length > 0 && !filtros.recebimento.includes(recebimentoDados)) return false;
+    if (filtros.idAcao.length > 0 && !filtros.idAcao.includes(idAcaoDados)) return false; // Novo filtro aplicado
 
     return true;
 }
