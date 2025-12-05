@@ -157,8 +157,8 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
                     const isTarget = alvos.includes(codigoGeo);
 
                     return {
-                        fillColor: isTarget ? '#0352AA' : '#e0e0e0', // Azul se for o alvo
-                        color: isTarget ? '#0352AA' : '#ffffff',     // Borda Azul ou Branca
+                        fillColor: isTarget ? '#0352AA' : '#e0e0e0',
+                        color: isTarget ? '#0352AA' : '#ffffff',
                         weight: isTarget ? 1 : 0.5,
                         fillOpacity: 1,
                         opacity: 1
@@ -177,8 +177,7 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
                     const featureGroup = L.featureGroup(layersAlvo);
                     setTimeout(() => {
                         window.miniMapInstance.invalidateSize();
-                        // Padding 100 para afastar o zoom
-                        window.miniMapInstance.fitBounds(featureGroup.getBounds(), { padding: [100, 100] });
+                        window.miniMapInstance.fitBounds(featureGroup.getBounds(), { padding: [50, 50] });
                     }, 200);
                 } else {
                     window.miniMapInstance.fitBounds(layerMunicipios.getBounds());
@@ -269,7 +268,6 @@ window.abrirDetalhesSidebar = function(id) {
         }
     });
 
-    // Injeta a DIV do mapa
     html += `<div class="detalhe-item" style="border:none; margin-top:20px; clear:both; width:100%;">
                 <strong style="display:block; margin-bottom:10px;">Mapa de Localização</strong>
                 <div id="mini-mapa-container"></div>
@@ -280,7 +278,6 @@ window.abrirDetalhesSidebar = function(id) {
     const contentPanel = docPai.querySelector('.content-panel');
     if(contentPanel) contentPanel.scrollTop = 0;
 
-    // Chama o renderizador com um pequeno delay para a DIV existir no DOM
     setTimeout(() => {
         renderizarMiniMapaMunicipios(p['COD_IBGE_COMPOSTO']);
     }, 200);
@@ -309,7 +306,7 @@ function onEachFeatureGeral(feature, layer) {
         if(p['Orgão da Açao']) 
             html += `<div style="${linhaStyle}"><strong style="color:#555;">Órgão:</strong> ${p['Orgão da Açao']}</div>`;
         
-        // Orçamento Previsto REMOVIDO DAQUI
+        // Orçamento Previsto REMOVIDO
 
         html += `<button class="btn-ver-mais" onclick="window.abrirDetalhesSidebar('${idUnico}')">Detalhes</button>`;
         html += `</div>`;
@@ -428,10 +425,19 @@ function inicializarFiltros() {
     const situacoes = getUniqueValues(todosDados, 'Status_atual');
     const eixos = getUniqueValues(todosDados, 'Eixo');
     const tipologias = getUniqueValues(todosDados, 'TIPOLOGIA');
-    const recebimentos = getUniqueValues(todosDados, 'RECEBIMENTO');
-    const idsAcao = getUniqueValues(todosDados, 'project_id'); // Novo: IDs de ação
+    const idsAcao = getUniqueValues(todosDados, 'project_id'); // ID da Ação
 
-    // Extrai Anos da data de celebração
+    // --- NOVA LÓGICA: RECEBIMENTO POR ANO ---
+    const anosRecebimento = new Set();
+    todosDados.forEach(f => {
+        const val = f.properties['RECEBIMENTO'];
+        if(val && val.length >= 4) {
+            anosRecebimento.add(val.substring(0, 4));
+        }
+    });
+    const listaAnosRecebimento = Array.from(anosRecebimento).sort().reverse();
+
+    // Extrai Anos da data de celebração (Mantido)
     const anosCelebracao = new Set();
     todosDados.forEach(f => {
         const val = f.properties['data_celebracao'];
@@ -446,8 +452,8 @@ function inicializarFiltros() {
     preencherSelect('filtro-eixo', eixos);
     preencherSelect('filtro-tipologia', tipologias);
     preencherSelect('filtro-ano', listaAnos);
-    preencherSelect('filtro-recebimento', recebimentos);
-    preencherSelect('filtro-id-acao', idsAcao); // Preenche o select do ID da ação
+    preencherSelect('filtro-recebimento', listaAnosRecebimento); // Agora passa a lista de ANOS
+    preencherSelect('filtro-id-acao', idsAcao);
 
     if (window.parent.iniciarSlimSelect) {
         window.parent.iniciarSlimSelect();
@@ -497,7 +503,7 @@ function aplicarFiltros() {
         tipologia: getSelectedValues('filtro-tipologia'),
         ano: getSelectedValues('filtro-ano'),
         recebimento: getSelectedValues('filtro-recebimento'),
-        idAcao: getSelectedValues('filtro-id-acao') // Novo filtro capturado
+        idAcao: getSelectedValues('filtro-id-acao')
     };
 
     window.clusterPontos.clearLayers();
@@ -549,10 +555,12 @@ function checarFiltro(feature, filtros) {
     
     const dataCelebracao = getVal('data_celebracao');
     const anoCelebracao = dataCelebracao.length >= 4 ? dataCelebracao.substring(0, 4) : "";
+    
     const recebimentoDados = getVal('RECEBIMENTO');
-    const idAcaoDados = getVal('project_id'); // Novo dado para comparar
+    const anoRecebimentoDados = recebimentoDados.length >= 4 ? recebimentoDados.substring(0, 4) : "";
 
-    // Filtros
+    const idAcaoDados = getVal('project_id'); 
+
     if (filtros.municipio.length > 0) {
         const match = filtros.municipio.some(filtro => munDados.includes(filtro.toUpperCase()));
         if (!match) return false;
@@ -565,9 +573,14 @@ function checarFiltro(feature, filtros) {
     if (filtros.situacao.length > 0 && !filtros.situacao.includes(sitDados)) return false;
     if (filtros.eixo.length > 0 && !filtros.eixo.includes(eixoDados)) return false;
     if (filtros.tipologia.length > 0 && !filtros.tipologia.includes(tipoDados)) return false;
+    
+    // Filtro por ANO DE CELEBRAÇÃO
     if (filtros.ano.length > 0 && !filtros.ano.includes(anoCelebracao)) return false;
-    if (filtros.recebimento.length > 0 && !filtros.recebimento.includes(recebimentoDados)) return false;
-    if (filtros.idAcao.length > 0 && !filtros.idAcao.includes(idAcaoDados)) return false; // Novo filtro aplicado
+    
+    // Filtro por ANO DE RECEBIMENTO (Atualizado)
+    if (filtros.recebimento.length > 0 && !filtros.recebimento.includes(anoRecebimentoDados)) return false;
+    
+    if (filtros.idAcao.length > 0 && !filtros.idAcao.includes(idAcaoDados)) return false; 
 
     return true;
 }
