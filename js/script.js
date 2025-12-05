@@ -125,7 +125,6 @@ function renderizarMiniMapaMunicipios(codigosIbgeString) {
     const containerMiniMapa = window.parent.document.getElementById('mini-mapa-container');
 
     if (!containerMiniMapa) {
-        console.warn("Container do mini-mapa não encontrado. Tentando novamente em 100ms...");
         setTimeout(() => renderizarMiniMapaMunicipios(codigosIbgeString), 100);
         return;
     }
@@ -232,8 +231,8 @@ window.abrirDetalhesSidebar = function(id) {
         { chave: 'data_inicio_vigencia', label: 'Início da Vigência', tipo: 'data' },
         { chave: 'data_fim_vigencia_total', label: 'Fim da Vigência', tipo: 'data' },
 
-        // Financeiro
-        { chave: 'Orçamento previsto total', label: 'Orçamento Previsto', tipo: 'moeda' },
+        // Orçamento Previsto REMOVIDO DAQUI
+        
         { chave: 'valor_contrato', label: 'Valor do Contrato', tipo: 'moeda' },
         { chave: 'valor_pago', label: 'Valor Pago', tipo: 'moeda' },
 
@@ -306,7 +305,7 @@ function onEachFeatureGeral(feature, layer) {
         if(p['Orgão da Açao']) 
             html += `<div style="${linhaStyle}"><strong style="color:#555;">Órgão:</strong> ${p['Orgão da Açao']}</div>`;
         
-        // Orçamento Previsto REMOVIDO
+        // Orçamento Previsto REMOVIDO DAQUI
 
         html += `<button class="btn-ver-mais" onclick="window.abrirDetalhesSidebar('${idUnico}')">Detalhes</button>`;
         html += `</div>`;
@@ -425,7 +424,18 @@ function inicializarFiltros() {
     const situacoes = getUniqueValues(todosDados, 'Status_atual');
     const eixos = getUniqueValues(todosDados, 'Eixo');
     const tipologias = getUniqueValues(todosDados, 'TIPOLOGIA');
+    const recebimentos = getUniqueValues(todosDados, 'RECEBIMENTO');
     const idsAcao = getUniqueValues(todosDados, 'project_id'); // ID da Ação
+
+    // Extrai Anos da data de celebração
+    const anosCelebracao = new Set();
+    todosDados.forEach(f => {
+        const val = f.properties['data_celebracao'];
+        if(val && val.length >= 4) {
+            anosCelebracao.add(val.substring(0, 4));
+        }
+    });
+    const listaAnos = Array.from(anosCelebracao).sort().reverse();
 
     // --- NOVA LÓGICA: RECEBIMENTO POR ANO ---
     const anosRecebimento = new Set();
@@ -436,16 +446,6 @@ function inicializarFiltros() {
         }
     });
     const listaAnosRecebimento = Array.from(anosRecebimento).sort().reverse();
-
-    // Extrai Anos da data de celebração (Mantido)
-    const anosCelebracao = new Set();
-    todosDados.forEach(f => {
-        const val = f.properties['data_celebracao'];
-        if(val && val.length >= 4) {
-            anosCelebracao.add(val.substring(0, 4));
-        }
-    });
-    const listaAnos = Array.from(anosCelebracao).sort().reverse();
 
     preencherSelect('filtro-orgao', orgaos);
     preencherSelect('filtro-situacao', situacoes);
@@ -574,10 +574,9 @@ function checarFiltro(feature, filtros) {
     if (filtros.eixo.length > 0 && !filtros.eixo.includes(eixoDados)) return false;
     if (filtros.tipologia.length > 0 && !filtros.tipologia.includes(tipoDados)) return false;
     
-    // Filtro por ANO DE CELEBRAÇÃO
     if (filtros.ano.length > 0 && !filtros.ano.includes(anoCelebracao)) return false;
     
-    // Filtro por ANO DE RECEBIMENTO (Atualizado)
+    // Filtro por ANO DE RECEBIMENTO
     if (filtros.recebimento.length > 0 && !filtros.recebimento.includes(anoRecebimentoDados)) return false;
     
     if (filtros.idAcao.length > 0 && !filtros.idAcao.includes(idAcaoDados)) return false; 
